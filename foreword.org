@@ -1,0 +1,23 @@
+* Forord
+:PROPERTIES:
+:UNNUMBERED:
+:END:
+
+Denne rapport beskriver forløbet for gruppe 3's bachelorprojekt for kurset I7BAC i forårssemesteret 2023
+på Diplomingeniøruddannelsen i Softwareteknologi, Aarhus Universitet. Gruppe 3 er et enmandshold bestående
+af diplomingeniørstuderende Tomas Hagenau Andersen. Vejleder for projektet er Carsten Eie Frigaard. \\
+
+Hvert afsnit i rapporten er opdelt i underafsnit for hver delkomponent, som skal analyseres,
+udvikles, osv. Det er tilrettelagt således, at læseren med fordel kan gennemlæse et afsnit i rapporten
+flere gange for et bestemt delkomponent ad gangen. Dette er gjort for at hjælpe læseren med at holde
+fokus, da de forskellige komponenter og bagvedlæggende problemstillinger favner mange forskellige
+områder inden for softwareteknologien fag. \\
+
+Desuden vil læseren formentlig bemærke, at denne rapport har et stort fokus på analyse, fremfor
+eksempelvis arkitektur, design og implementering, da projektet har vist sig at have en mere undersøgende
+natur. \\
+
+Derudover skylder gruppen en kæmpe tak til Magenta ApS og OS2datascanner teamet for først og fremmest at
+udbyde det projekt, samt bidrage med en fantastisk sparing undervejs i forløbet.
+
+\newpage

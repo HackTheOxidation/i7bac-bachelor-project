@@ -1,0 +1,6 @@
+*.pdf
+*.tex
+agendas/*.pdf
+agendas/*.tex
+summaries/*.pdf
+summaries/*.tex

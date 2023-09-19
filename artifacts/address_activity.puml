@@ -1,0 +1,12 @@
+@startuml
+:Load recognized addresses;
+:Scan text for all substrings that match address regex;
+while (For each address)
+	:Check that address contains a recognized street name;
+	:Check that address contains a street number;
+	:Check for optional floor, zip code and city;
+	:Assert sensitivity of matched address;
+	:Yield Match Result;
+endwhile
+stop
+@enduml

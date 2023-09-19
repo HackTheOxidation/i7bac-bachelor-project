@@ -1,0 +1,40 @@
+* Resume
+:PROPERTIES:
+:UNNUMBERED:
+:END:
+
+Denne rapport beskriver projektforløbet for udvikling og forbedring af algoritmer til regelsystemet
+for OS2datascanner. OS2datascanner, der er udviklet af firmaet Magenta ApS, er et GDPR-compliance
+skannerværktøj, som kan skanne forskellige datakilder og -formater for forekomster af følsomme
+oplysninger, såsom CPR-numre, navne, adresser, mm. Til at detektere disse følsomme oplysninger er
+OS2datascanner udstyret med en skannermotor, der har et såkaldt regelsystem. Dette regelsystem
+indeholder algoritmer til genkendelse af nævnte oplysninger. Teamet bag OS2datascanner har dog
+oplevet performance-problemer med dette regelsystem. Dette projektet går ud på, at analysere
+regelsystemet vha. datalogisk modellering og benchmarking, samt udvikle og implementere nye
+effektive algoritmer for udvalgte regler: nemlig CPR-reglen, Navne-reglen, Adresse-reglen og
+Ordliste-reglen. Resultaterne for de nye implementeringer for disse regler viser gennemsnitlige
+hastighedsforøgelser på henholdvis ca. 6 gange, 11 gange og 29 gange for CPR-reglen, Navne-reglen
+og Adresse-reglen. For Ordliste-reglen er der blevet udviklet to nye implementeringer, som
+takler hver sin case.
+
+* Abstract
+:PROPERTIES:
+:UNNUMBERED:
+:END:
+
+This report describes the bachelor project, which incompasses the research and development of
+new algorithms for the rule system in OS2datascanner. OS2datascanner, which is developed by the
+company Magenta ApS, is a GDPR-compliance tool that is designed to detect sensitive informantion
+such as Danish CPR-numbers, names, addresses and more in a varity of data sources and formats.
+To detecting this kind of informantion, OS2datascanner is equiped with a scanner engine, which
+implements a so called rule system. This rule system contains algorithms for recognizing said
+information. The team behind OS2datascanner has experienced performance issues with the current
+rule system. The goal of this project is to analyse the current rules using computer science
+modelling and benchmarking and subsequently design and implement new, efficient algorithms
+for a couple of selected rules: namely the CPR rule, the Name rule, the Address Rule and
+the Wordlist rule. This resulted in new implemenations of said rule, which show speed
+improvements in the benchmarks of factors of 6, 11 and 29 for the CPR rule, Name rule and
+Address rule, respectively. For the Wordlist rule, two new implemenations were
+developed, each handling a different case of the problem.
+
+\newpage

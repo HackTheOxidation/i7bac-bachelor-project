@@ -1,0 +1,448 @@
+#+title: I7BAC: Optimizing Text Processing for OS2datascanner based on finite automata
+#+author: Tomas Hagenau Andersen
+#+email: tha@magenta-aps.dk
+#+date: 2023-06-08
+#+DESCRIPTION: 
+#+KEYWORDS: 
+#+LANGUAGE:  en
+#+OPTIONS:   H:2 num:t toc:nil \n:nil @:t ::t |:t ^:t -:t f:t *:t <:t ^:nil
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:https://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+HTML_LINK_UP:
+#+HTML_LINK_HOME:
+#+startup: beamer
+#+LaTeX_CLASS: beamer
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+
+* Introduktion
+
+** Baggrunden for projektet
+
+Der er et par årsager til, at jeg har lavet dette projekt: \\
+
+- Jeg går på Diplomingeniøruddannelsen i Softwareteknologi (tidligere kendt som IKT) på Aarhus Universitet.
+- Performance er en vigtig koncurrenceparameter for OS2datascanner. 
+
+** Mine erfaringsområder
+
+I får lige lidt at vide om, hvad jeg egentlig er uddannet i, og hvad jeg laver.
+
+** Mine erfaringsområder - Hvad jeg ved noget om:
+
+- Indlejrede Systemer og Low-level programmering
+- Digitale kredsløb og FPGA'er
+- Moderne C++ (indsæt lydklip af ondskabsfuld latter)
+- C's Application Binary Interface og Foreign Function Interfaces
+
+** Mine erfaringsområder - Hvad jeg interesserer mig for:
+
+- Klassisk systemprogrammering
+- High-Performance Computing (HPC)
+- Sikkerhed
+
+** Mine erfaringsområder - Hvad jeg absolut ikke skal forsøge at lave:
+
+- HTML, CSS og andet frontend (jeg kan ikke centrere en <div>)
+- UX, Design og kunsten at lave ting "pænt"...
+
+** Dagsorden for denne præsentation
+
+Denne præsentation består af tre dele, som hver belyser nøgleteknologier/metoder:
+
+1. Arbejdsprocessen
+2. Algoritmer til tekstbehandling
+3. CPython Extensions i C++20
+
+Derefter vises resultaterne fra benchmarks, og så er der selvfølgelig tid til spørgsmål.
+
+** Disclaimer
+
+Lige inden vi går videre, så er der noget I skal vide... \\
+
+** Disclaimer
+
+\textbf{Jeg er ikke datalog... jeg leger, at jeg er datalog...}
+
+* Del 1: Proces
+
+** De store spørgsmål...
+
+Hvordan takler man problemer af teoretisk natur i praksis? \\
+
+Hvordan analyserer man kode og systemer som man ikke selv har skrevet? \\
+
+Hvordan bliver dokumentation en central del af en iterativ proces, når man
+ikke har en krav-spec?
+
+** En ny udviklingsproces (1/2)
+
+Til dette projekt er der lavet en ny udviklingsproces, som er drevet af undersøgelser.
+
+#+ATTR_LATEX: :width 5cm :height 6cm
+[[../artifacts/development_process.png]]
+
+** En ny udviklingsproces (2/2)
+
+Den er ikke Agil, da:
+
+- Der er ingen krav-spec
+- Dokumentation kommer før kode
+
+Men, den har Agile elementer, såsom:
+
+- Man agerer på forandring, frem for at følge en plan.
+- Man "leverer" kode (eller resultater) undervejs. 
+
+* Del 2: Algoritmer til tekstbehandling.
+
+** Reglerne i OS2datascanner
+
+OS2datascanner har fire indbyggede systemregler, som er blevet undersøgt i dette projekt:
+
+- CPR-reglen
+- Navne-reglen
+- Adresse-reglen
+- Ordliste-reglen
+
+** CPR-reglen
+
+Er designet til at lede efter CPR-numre.
+
+Den har 3 options:
+
+- ~modulus_11~
+- ~ignore_irrelevant~
+- ~examine_context~
+
+** CPR-reglen: Den gamle udgave
+
+Er bygget på et regex:
+
+#+begin_src python
+  cpr_regex = r"\b(\d{6})(?:[ \-/\.\t]|[ ]\-[ ])?(\d{4})\b"
+#+end_src
+
+og vil matche eksempelvis (uden ~ignore_irrelevant~)
+
+- 999999-9999
+- 310200-0000
+
+Tidskompleksitet for hele algoritmen:
+
+- Uden ~examine_context~: $\mathcal{O}(n + m)$
+- Med ~examine_context~: $\mathcal{O}(n + nm)$
+
+** CPR-reglen: Den nye udgave
+
+Hvad er worst-case for at kunne genkende et CPR-nummer set fra et teoretisk perspektiv? \\ 
+
+Dette kan undersøges ved at modellere CPR-numre som et formelt sprog. \\
+
+Vis at dette sprog tilhører de regulære sprog -> CPR-numre kan genkendes i lineær tid.
+
+** CPR-reglen: Den nye udgave
+
+Anvender en "håndlavet" endelig tilstandsmaskine (DFA) med ti tilstande. \\
+
+Denne implementering kan afvise kandidater såsom 999999-9999 tidligere,
+fordi at tjek af bl.a. dato og skudår sker "inline". \\
+
+Tidskompleksitet:
+
+- $\mathcal{O}(n + m)$ uanset options.
+
+** Navne-reglen
+
+Er designet til at finde personnavne. \\
+
+Et personnavn kan bestå af op til 5 navne. \\
+
+Hver af disse navne skal fremgå af de officielle danske navnelister. \\
+
+Den har 1 option:
+
+- ~expansive~
+
+** Navne-reglen: Den gamle udgave
+
+Er baseret på et nasty langt regex. \\
+
+Først findes alle kandidater for "fulde navne". Dernæst findes alle kandidater for "enkelte navne". \\
+
+Hver navnekandidat holdes op imod de officielle navnelister. \\
+
+Tidskompleksitet for algoritmen:
+
+- uden ~expansive~: $\mathcal{O}(n + m)$
+- Med ~expansive~: $\mathcal{O}(n + nm)$
+
+** Navne-reglen: Den nye udgave
+
+Er baseret på en enkelt FSM, der kan genkende ord med stort startbogstav. \\
+
+#+ATTR_LATEX: :width 2cm :height 3cm
+[[./bachelorprojekt-bilag/rapport-kode/artifacts/name_dfa.png]]
+
+Ny strategi: Find alle "enkelte navne", tjek i navnelisterne og sæt dem sammen. \\
+
+Alle navne findes ved en gennemkørsel. \\
+
+Tidskompleksitet:
+
+- $\mathcal{O}(n + m)$ uanset options.
+
+** Adresse-reglen
+
+Er designet til at finde (danske) adresser. \\
+
+En adresse består af et vejnavn, et husnummer og muligvis
+en etage, et postnummer og et bynavn. \\
+
+Ingen options.
+
+** Adresse-reglen: Den gamle udgave
+
+Er også baseret på et nasty regex og anvender opslag i en samling af alle danske vejnavne. \\
+
+Pga. af kompleksiteten i regex'et så eksploderer antallet af tilstande. \\
+
+Tidskompleksitet:
+
+- $\mathcal{O}(n + m)$.
+
+** Adresse-reglen: Den nye udgave
+
+Man kan genbruge strategien fra Navne-reglen og basere den på FSM. \\
+
+Den udvides med en FSM til genkendelse af husnumre:
+
+#+ATTR_LATEX: :width 2cm :height 3cm
+[[./bachelorprojekt-bilag/rapport-kode/artifacts/number_dfa.png]]
+
+Tidskompleksitet:
+
+- $\mathcal{O}(n + m)$
+
+** Ordliste-reglen
+
+Er oprindeligt lavet til at finde forekomster af lister af ord i teksten
+("nestede"-ordlister).
+
+** Ordliste-reglen: Den gamle udgave
+
+Denne gennemløber teksten for hver liste af ord.
+
+Tidskompleksitet:
+
+- $\mathcal{O}(n + nw)$
+
+** Ordliste-reglen: Den nye udgave
+
+Er opdelt i to cases til at takle to tilfælde. \\
+
+** Ordliste-reglen: Den nye udgave - Case 1: WordlistRule
+
+Taktikken minder meget om Navne-reglen/Adresse-reglen. \\
+
+Vi har en "flad" liste af (stop)ord. \\
+
+Denne liste er dog konfigurebar af brugeren.
+
+** Ordliste-reglen: Den nye udgave - Case 2: OrderedWordlistRule (1/2)
+
+Denne takler samme tilfælde som den gamle udgave, nemlig "nestede" ordlister.
+
+#+ATTR_LATEX: :width 2cm :height 3cm
+[[./bachelorprojekt-bilag/rapport-kode/artifacts/wordlist_memory.png]]
+
+** Ordliste-reglen: Den nye udgave - Case 2: OrderedWordlistRule (2/2)
+
+Man blander hash-maps, (lazy) iterators og lister:
+
+#+ATTR_LATEX: :width 5cm :height 5cm
+[[./bachelorprojekt-bilag/rapport-kode/artifacts/wordlist_ds.png]]
+
+Tidskompleksitet:
+
+- $\mathcal{O}(n + w)$
+
+* Del 3: CPython Extensions i C++20
+
+** Hvorfor lave en CPython Extension i C++20?
+
+Under de indledende tests og benchmarks blev det klart at en ren
+python implementering ikke førte til forbedringer mht. performance. \\
+
+Der måtte andre midler til...
+
+** Hvorfor lave en CPython Extension i C++20?
+
+Her var den mest åbenlyse løsning at bygge en CPython Extension. \\
+
+Til dette landte valget på C/C++ som implementeringssprog, da CPython er bygget til at kommunikere
+med C/C++ uden videre.
+
+** Hvorfor lave en CPython Extension i C++20?
+
+Hertil blev der valgt at anvende C++20, som løser mange af de klassiske udfordringer
+med C++ og giver en helt anden udvikleroplevelse. \\
+
+Og så har C++ et par "killer-features" udover at performance er i top:
+
+- Template metaprogrammering
+- "Zero-cost" Abstractions
+
+** Lige et par highlights - 1/2
+
+Sådan udnytter man ~lambda~'er og variadic templates til at sammenligne ~char~'s:
+
+#+begin_src C++
+
+  using Predicate = std::function<bool(char)>;
+
+  template <typename T>
+    requires std::same_as<T, char>
+  constexpr auto make_predicate(T d) noexcept {
+    return [d](T c) { return c == d; };
+  }
+
+#+end_src
+
+** Lige et par highlights - 1/2 (fortsat)
+
+Sådan udnytter man ~lambda~'er og variadic templates til at sammenligne ~char~'s:
+
+#+begin_src C++
+
+  template <typename T, typename... Args>
+  constexpr auto make_predicate(T d, Args... ds)
+    noexcept {
+    if constexpr (sizeof...(ds) > 0) {
+      return [d, ds...](T c) {
+        return make_predicate(d)(c)
+          || make_predicate(ds...)(c);
+      };
+    } else {
+      return make_predicate(d);
+    }
+  }
+
+#+end_src
+
+** Lige et par highlights - 2/2
+
+Indlæsning af navnelister på Compile-Time:
+
+#+begin_src C++
+
+  using namespace std::string_view_literals;
+
+  namespace {
+  static constexpr auto firstnames =
+    std::to_array<std::string_view>({
+  #include "datasets/female_firstnames.txt"
+  #include "datasets/male_firstnames.txt"
+  });
+
+  static constexpr auto lastnames =
+    std::to_array<std::string_view>({
+  #include "datasets/lastnames.txt"
+  });
+#+end_src
+
+** Hvad med packaging, deployment og den slags?
+
+Ved brug af compilerer, som producerer maskinkode, så 
+skal der laves et build for hver enkelt platform. \\
+
+Dette var en bekymring set fra et infrastruktur-perspektiv. \\
+
+Heldigvis findes der en løsning: ~cibuildwheels~ og GitHub Actions/GitLab CI.
+
+[[./ci_pipeline.png]]
+
+* Resultater
+
+** Resultater fra Benchmarks
+
+Så kommer det I har ventet på...
+
+** Resultater fra Benchmarks - CPR-reglen
+
+#+CAPTION: Beregnede hastighedsfaktorer ud fra 'Mean Time' for CPR-regel. Da den nye regel ikke har 'ignore_irrelevant' er disse undladt.
+#+NAME: Tabel 10
+| data set | /mod11/ | /context/ | Gammel (s) |  Ny (s) | Speedup |
+|----------+-------+---------+------------+---------+---------|
+| wiki     | False | False   |    17.4567 |  1.9235 |  907.5% |
+| wiki     | True  | False   |    17.4082 |  1.9323 |  900.9% |
+| wiki     | False | True    |    33.2116 |  4.4361 |  748.7% |
+| gcc      | False | False   |    19.3008 |  3.9440 |  489.4% |
+| gcc      | True  | False   |    19.2106 |  3.9751 |  483.3% |
+| gcc      | False | True    |    39.0410 | 11.0931 |  351.9% |
+
+** Resultater fra Benchmarks - Navne-reglen
+
+#+CAPTION: Beregnede hastighedsfaktorer fra 'Mean Time' for Navne-reglen.
+#+NAME: Tabel 11
+| data set | /expansive/ | Gammel (s) | Ny (s) | Speedup |
+|----------+-----------+------------+--------+---------|
+| wiki     | False     | 111.1803   | 6.8151 | 1631.4% |
+| wiki     | True      | TIMEOUT    | N/A    | N/A     |
+| gcc      | False     | 34.5217    | 5.4869 | 629.2%  |
+| gcc      | True      | TIMEOUT    | N/A    | N/A     |
+
+** Resultater fra Benchmarks - Addresse-reglen
+
+#+CAPTION: Beregnede hastighedsfaktorer fra 'Mean Time' for Adresse-reglen.
+#+NAME: Tabel 12
+| data set | Gammel (s) | Ny (s) | Speedup |
+|----------+------------+--------+---------|
+| wiki     |    57.0632 | 1.9814 | 2925.4% |
+| gcc      |    68.3224 | 2.3113 | 2956.0% |
+
+** Resultater fra Benchmarks - Ordliste-reglen (1/3)
+
+Ordliste-reglen er blevet opdelt i to. \\
+
+Den gamle udgave gik i TIMEOUT under benchmark, så her kan man ikke udlede et tal forhastighedsforbedringen.
+
+** Resultater fra Benchmarks - Ordliste-reglen (2/3)
+
+Case 1: 'WordListRule' - eller stopordsliste.
+
+#+CAPTION: Resultater af benchmarks for de nye Ordliste-regler Case 1: 'WordListRule'.
+#+NAME: Tabel 8
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |        2.4171 |      5 |
+| gcc      |        4.9714 |      5 |
+
+** Resultater fra Benchmarks - Ordliste-reglen (3/3)
+
+Case 2: 'OrderedWordlistRule' - eller nestede ordlister.
+
+#+CAPTION: Resultater af benchmarks for de nye Ordliste-regler Case 2: 'OrderedWordlistRule'.
+#+NAME: Tabel 9
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |       13.7363 |      5 |
+| gcc      |       42.3901 |      5 |
+
+Bemærk: dette er lavet i ren Python.
+
+** Tak fordi i lyttede!
+
+I skal have mange tak for jeres opmærksomhed. \\
+
+Og så skal jeg udbringe en kæmpe tak til: \\
+
+- Alec, Jesper og Jonas for teknisk sparing
+- Mathias og Emil M. for diskussion om infrastruktur
+
+Og ja, så også tak til chefen da ;-) \\
+
+Der skulle vel ikke ske at være spørgsmål?
+

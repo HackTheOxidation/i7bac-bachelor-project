@@ -1,0 +1,27 @@
+#+TITLE: Agenda - Vejledermøde 3
+#+AUTHOR: Tomas Hagenau Andersen - 201906721
+#+DATE: 2023-02-14
+
+* Dato, tid og sted
+
+- Dato: d. 14. Februar 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Punkter
+
+1. Velkommen.
+2. Gennemgang af referat fra forrige møde.
+3. Status for projektet.
+4. Diskussion af fornyet udkast til indledning.
+5. Diskussion af fornyet udkast til problemformulering.
+6. Opstart af analysefasen. Er det nu?
+7. Planlægning af aktiviteter for den kommende uge.
+8. Fastlæggelse af næste møde.
+9. Eventuelt.
+10. Afrunding.

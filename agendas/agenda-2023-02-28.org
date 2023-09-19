@@ -1,0 +1,27 @@
+#+TITLE: Agenda - Vejledermøde 5
+#+AUTHOR: Tomas Hagenau Andersen - 201906721
+#+DATE: 2023-02-28
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 28. Februar 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Punkter
+
+1. Velkommen.
+2. Gennemgang af referat fra forrige møde.
+3. Status for projektet.
+4. Gennemgang af benchmarks for ny implementering af CPR regl.
+5. Flere midlertidige resultater for analysen af algoritmer.
+6. Planlægning af aktiviteter for den kommende uge.
+7. Fastlæggelse af næste møde.
+8. Eventuelt.
+9. Afrunding.

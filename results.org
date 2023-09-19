@@ -1,0 +1,70 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Resultater
+
+I dette afsnit præsenteres resultaterne i form af benchmarks for implementeringen
+af det nye regelsystem. Der anvendes samme opsætning som for det gamle system,
+hvis benchmarks blev foretaget i analyse-afsnittet. Analyse og diskussion af
+disse resultater, samt projektet som helhed kan findes i næste afsnit.
+
+** Benchmarks
+
+*** CPR-reglen
+
+I tabel [[Tabel 5]] ses resultater af benchmarks for den nye CPR-regel.
+Bemærk, at den nye udgave ikke har en 'ignore_irrelevant'-option.
+
+#+CAPTION: Resultater af benchmarks for den nye CPR-regel.
+#+NAME: Tabel 5
+| data set | /check_mod11/ | /examine_context/ | Mean time (s) | Rounds |
+|----------+-------------+-----------------+---------------+--------|
+| wiki     | Disabled    | Disabled        |        1.9235 |      5 |
+| wiki     | Enabled     | Disabled        |        1.9323 |      5 |
+| wiki     | Disabled    | Enabled         |        4.4361 |      5 |
+| gcc      | Disabled    | Disabled        |        3.9440 |      5 |
+| gcc      | Enabled     | Disabled        |        3.9751 |      5 |
+| gcc      | Disabled    | Enabled         |       11.0931 |      5 |
+
+*** Navne-reglen
+
+I tabel [[Tabel 6]] ses resultater af benchmarks for den nye Navne-regel.
+
+#+CAPTION: Resultater af benchmarks for den nye Navne-regel.
+#+NAME: Tabel 6
+| data set | /expansive/ | Mean time (s) | Rounds |
+|----------+-----------+---------------+--------|
+| wiki     | Disabled  | 6.8151        |      5 |
+| wiki     | Enabled   | N/A           |      5 |
+| gcc      | Disabled  | 5.4869        |      5 |
+| gcc      | Enabled   | N/A           |      5 |
+
+*** Adresse-reglen
+
+I tabel [[Tabel 7]] ses resultater af benchmarks for den nye Adresse-regel.
+
+#+CAPTION: Resultater af benchmarks for den nye Adresse-regel.
+#+NAME: Tabel 7
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |        1.9814 |      5 |
+| gcc      |        2.3113 |      5 |
+
+*** Ordliste-reglen
+
+Der er to cases med hver sin implementering i de nye system. Case 1 er 'WordListRule'
+og case 2 er 'OrderedWordlistRule'. Resultaterne af benchmarks for Case 1: 'WordListrule'
+ses i tabel [[Tabel 8]], og Case 2: 'OrderedWordlistRule' ses i tabel [[Tabel 9]].
+
+#+CAPTION: Resultater af benchmarks for de nye Ordliste-regler Case 1: 'WordListRule'.
+#+NAME: Tabel 8
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |        2.4171 |      5 |
+| gcc      |        4.9714 |      5 |
+
+#+CAPTION: Resultater af benchmarks for de nye Ordliste-regler Case 2: 'OrderedWordlistRule'.
+#+NAME: Tabel 9
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |       13.7363 |      5 |
+| gcc      |       42.3901 |      5 |

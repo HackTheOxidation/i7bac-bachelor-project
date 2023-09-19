@@ -1,0 +1,794 @@
+* Solution proposals
+
+This paper documents the proposals for new algorithms for the
+OS2datascanner's rule system, which aims to simplify and optimize the
+time complexities of each of the rules.
+
+** =CPRRule=
+
+The proposal for a new algorithm for detecting CPR-numbers relies on the
+fact that a CPR-number can be expressed with a regular expression. That
+is, the "language" which describes all valid CPR-numbers in the format
+=DDMMYYCCCC= is a regular language. A proof of this, along with a formal
+definition of "the language of CPR-numbers", is presented in
+"CPR-numbers as a regular language: A Proof".
+
+The fact that CPR-numbers are regular have two important implications.
+Firstly, Any regular language can be recognized by a Deterministic
+Finite Automata (DFA). Secondly, the DFA can be implemented such that it
+recognizes the corresponding regular language in linear time,
+\(\mathcal{O}(n)\), in relation to the size/length of the search space,
+\(n\).
+
+Now, since a regular language is also a context-free language, one could
+also choose an implementation based on a Push-Down Automaton (PDA) or
+even a Turing Machine. These would certainly be possible, but it would
+also have undesirable consequences, since it would worsen both the time
+and space complexity (see the Chomsky Hierarchy).
+
+The new algorithm is based on a finite automaton with 10 states, one for
+each digit in a CPR-number. Three of these states have inner states in
+cases where parts of a CPR-number may be separated by whitespace, a '/'
+or a hyphen.
+
+#+caption: Finite Automata for CPR Algorithm
+#+ATTR_LATEX: :width 3cm :height 18cm
+[[file:cpr_state_machine.png]]
+
+The input string is fed to this automaton, character by character. If
+the automaton reaches the match state and the input is valid, a result
+is emitted. Otherwise, the automaton is reset. This continues until
+there are no more input characters left.
+
+The implementation for the algorithm itself is shown below as a method
+=find_matches()= belonging to a class called =CPRDetector=:
+
+#+begin_src C++
+MatchResults CPRDetector::find_matches(const std::string &content) noexcept {
+  MatchResults results;
+
+  if (content.size() < 10) {
+    return results;
+  }
+
+  if (examine_context_ && examine_context(content)) {
+    return results;
+  }
+
+  // Initialize.
+  CPRDetectorState state = CPRDetectorState::Empty;
+  std::string cpr(10, 0);
+  char previous = 0;
+  std::size_t count = 0;
+  std::size_t begin = 0;
+  bool allow_separator, leap_year = false;
+  Predicate is_acceptable = [](char) { return false; };
+
+  for (auto it = std::begin(content); it != std::end(content); ++it) {
+    switch (state) {
+    case CPRDetectorState::Empty:
+      if (!is_previous_ok(previous)) {
+        previous = *it;
+        continue;
+      }
+
+      is_acceptable = make_predicate('0', '1', '2', '3');
+      update(*it, CPRDetectorState::First, state, is_acceptable);
+      previous = *it;
+
+      if (state == CPRDetectorState::First) {
+        cpr[0] = *it;
+        begin = count;
+      }
+
+      break;
+    case CPRDetectorState::First:
+      if (previous == '0') {
+        is_acceptable = is_nonzero_digit;
+      } else if (previous == '1' || previous == '2') {
+        is_acceptable = is_digit;
+      } else if (previous == '3') {
+        is_acceptable = make_predicate('0', '1');
+      } else {
+        reset(state);
+        previous = *it;
+        continue;
+      }
+
+      previous = cpr[1] =
+          update(*it, CPRDetectorState::Second, state, is_acceptable);
+
+      if (previous != 0)
+        // Next time, we allow a space.
+        allow_separator = true;
+
+      break;
+    case CPRDetectorState::Second:
+      if (allow_separator && is_space(*it)) {
+        // Skip a space character.
+        allow_separator = false;
+        ++count;
+        continue;
+      }
+
+      is_acceptable = make_predicate('0', '1');
+      previous = cpr[2] =
+          update(*it, CPRDetectorState::Third, state, is_acceptable);
+
+      break;
+    case CPRDetectorState::Third:
+      if (previous == '0') {
+        is_acceptable = is_nonzero_digit;
+      } else if (previous == '1') {
+        is_acceptable = make_predicate('0', '1', '2');
+      } else {
+        reset(state);
+        previous = 0;
+        continue;
+      }
+
+      previous = cpr[3] =
+          update(*it, CPRDetectorState::Fourth, state, is_acceptable);
+
+      leap_year = check_day_month(cpr, state);
+
+      if (previous != 0)
+        // Next time, we allow a space.
+        allow_separator = true;
+
+      break;
+    case CPRDetectorState::Fourth:
+      if (allow_separator && is_space(*it)) {
+        // Skip a space character.
+        allow_separator = false;
+        ++count;
+        continue;
+      }
+
+      is_acceptable = is_digit;
+
+      previous = cpr[4] =
+          update(*it, CPRDetectorState::Fifth, state, is_acceptable);
+
+      break;
+    case CPRDetectorState::Fifth:
+      if (previous == '0') {
+        is_acceptable = is_nonzero_digit;
+      } else {
+        is_acceptable = is_digit;
+      }
+
+      previous = cpr[5] =
+          update(*it, CPRDetectorState::Sixth, state, is_acceptable);
+
+      if (previous != 0)
+        // Next time we allow one of the valid separators.
+        allow_separator = true;
+
+      break;
+    case CPRDetectorState::Sixth:
+      if (allow_separator && is_separator(*it)) {
+        // Skip one of the valid separator characters.
+        allow_separator = false;
+        ++count;
+        continue;
+      }
+
+      is_acceptable = is_digit;
+      previous = cpr[6] =
+          update(*it, CPRDetectorState::Seventh, state, is_acceptable);
+
+      if (leap_year)
+        check_leap_year(cpr, state);
+
+      break;
+    case CPRDetectorState::Seventh:
+      is_acceptable = is_digit;
+      previous = cpr[7] =
+          update(*it, CPRDetectorState::Eighth, state, is_acceptable);
+
+      break;
+    case CPRDetectorState::Eighth:
+      is_acceptable = is_digit;
+      previous = cpr[8] =
+          update(*it, CPRDetectorState::Match, state, is_acceptable);
+
+      break;
+    case CPRDetectorState::Match:
+      is_acceptable = is_digit;
+      cpr[9] = update(*it, CPRDetectorState::Match, state, is_acceptable);
+
+      auto ahead = it;
+      if (is_previous_ok(*(++ahead)))
+        check_and_append_cpr(cpr, results, begin, count);
+
+      previous = *it;
+      allow_separator = false;
+      reset(state);
+
+      break;
+    }
+
+    ++count;
+  }
+
+  return results;
+}
+#+end_src
+
+In the code above, besides using a finite automaton as a basis, a few
+other interesting programming concepts are used to make the algorithm
+work. First and foremost, it uses the look-ahead (and look-behind)
+technique which is often seen in lexers and parsers. Also, it makes use
+of some ideas from functional programming such as lambdas (anonymous
+functions/closures), first-class functions and pure functions.
+
+Note that this implementation omits the options =check_mod11= and
+=examine_context=, but has the =ignore_irrelevant=-option fundamentally
+built in (cannot be turned of).
+
+Adding the behavior of the =check_mod11=-option can be done by altering
+the definition of the =find_matches()=-function and adding a new helper
+function called =check_mod11()=:
+
+#+begin_src C++
+bool CPRDetector::check_mod11(const MatchResult &result) noexcept {
+  // Perform the modulus 11 rule check
+  std::array<int, 10> factors = {0};
+
+  // Convert every digit to an integer and multiply by the mod11 factor.
+  for (std::size_t i = 0; i < 10; ++i) {
+    factors[i] =
+        static_cast<int>(result.match()[i] - '0') * modulus11_factors[i];
+  }
+
+  // Take the sum of all factors.
+  auto sum = std::accumulate(std::begin(factors), std::end(factors), 0);
+
+  // Check that the sum is ok.
+  return sum % 11 == 0;
+}
+#+end_src
+
+This code does a simple calculation of the sum of each of the digits in
+a CPR-number multiplied by the modulus 11 factor as specified by CPR
+Administrationen and checks that 11 divides this sum.
+
+As in the case of the =check_mod11=-option, the behavior of the
+=examine_context=-option can also be integrated into the algorithm by
+modifying the =find_matches()=-function. However, this is insufficient
+as this doesn't check of the occurance of a blacklisted word that is not
+in the vicinty of a match.
+
+We will however, delay the introduction to this definition, as it relies
+on a concept that will be introduced in the coming sections.
+
+** A unified replacement for the underlying mechanism of the Name Rule,
+
+In essence, the Name Rule, the Address Rule and the Health Rule (and
+thus the Ordered Wordlist Rule) try to solve the same underlying
+problem, or at least very similar problems. In the current version,
+these rules are implemented using different strategies. That is, search
+a text and find occurances of a finite set of specified substrings. From
+an algorithmic perspective, this isn't necessarily a problem. However,
+from a software design perspective, it is, since code reuse is generally
+encouraged and having three implementations that share no code at all
+isn't great.
+
+Therefore, we propose a unification of the strategy behind these rules,
+that can then be adjusted for each particular case. In all three cases,
+two components are needed: a data structure containing all the
+substrings to search for and an algorithm for fast and efficient
+comparison of strings. This approach is inspired by a variant of the
+Rabin-Karp string matching algorithm[fn:1] with multiple pattern search.
+The idea is this: every substring of interest is stored in a hash table,
+that has lookup of \(\mathcal{O}(1)\). That way, it is fast to check if
+a given substring is a match.
+
+The key to the efficiency in the Rabin-Karp algorithm is the assumption
+that every substring of interest has the same length. This is not a
+valid assumption for names or addresses, though. However, this is where
+the finite automaton becomes usefull. If instead, there exists a pattern
+in all of the substrings that a finite automaton can recognize, then the
+finite automaton can recognize it in linear time. The question becomes:
+what pattern? This depends on the case in each of the rules, which will
+be discussed later.
+
+So a DFA has to be designed for each of the rules, but they can still
+share an implementation of an immutable hash set. An immutable hash set,
+called =FrozenHashSet= has been implemented with performance in mind:
+
+#+begin_src C++
+/*
+  Immutable hash table.
+ */
+template <std::size_t Size> class FrozenHashSet : public AbstractHashSet {
+private:
+  std::array<Chain, Size> container_;
+
+  auto get_hash(const std::string_view value) const noexcept {
+    std::hash<std::string_view> hash_fun;
+    return hash_fun(value);
+  }
+
+  void insert(const std::string_view value) noexcept {
+    auto hash = get_hash(value);
+    auto index = hash % Size;
+    auto &chain = container_[index];
+
+    if (!chain.contains(hash)) {
+      if (chain.hash() == 0) {
+        chain = Chain(hash);
+      } else {
+        chain.append(hash);
+      }
+    }
+  }
+
+public:
+  FrozenHashSet() noexcept = delete;
+
+  FrozenHashSet(std::array<const char *, Size> initializer) noexcept {
+    for (const char *value : initializer) {
+      insert(std::string_view(value));
+    }
+  }
+
+  FrozenHashSet(std::array<std::string_view, Size> initializer) noexcept {
+    for (auto value : initializer) {
+      insert(value);
+    }
+  }
+
+  FrozenHashSet(FrozenHashSet &&) noexcept = default;
+  FrozenHashSet &operator=(FrozenHashSet &&) noexcept = default;
+  ~FrozenHashSet() noexcept = default;
+
+  [[nodiscard]] bool contains(const std::string_view value) const noexcept {
+    auto hash = get_hash(value);
+    auto index = hash % Size;
+    return container_[index].contains(hash);
+  }
+};
+#+end_src
+
+This implementation uses chaining as its collision strategy using the ~Chain~-class,
+which won't be described further, but it is simply a chain link used to implement the
+collision strategy.
+This data structure enables code sharing between multiple algorithm implementations
+As an example, this is also used to implement the =examine_context=
+option for =CPRDetector=, whos implementation has been defered thus far:
+
+#+begin_src C++
+  static constexpr auto blacklist_words = std::to_array<std::string_view>(
+      {"p-nr", "p.nr", "p-nummer", "pnr",
+       "customer no", "customer-no", "bilagsnummer",
+       "order number", "ordrenummer", "fakturanummer",
+       "faknr", "fak-nr", "tullstatistisk", "tullstatistik",
+       "test report no", "protocol no.", "dhk:tx"});
+
+  static const auto blacklist_words_set = FrozenHashSet(blacklist_words);
+  }; // namespace
+
+  static bool find_blacklisted_words(const std::string &content,
+                                     const std::array<std::size_t, 4> indices)
+    noexcept {
+
+    for (std::size_t i = 1; i < 4; ++i) {
+      for (std::size_t j = 0; j < i; ++j) {
+        auto begin = indices[j];
+        auto end = indices[i] - begin;
+
+        if (end > content.size())
+          end = content.size() - begin - 1;
+
+        std::string target = content.substr(begin, end);
+
+        if (blacklist_words_set.contains(target))
+          return true;
+      }
+    }
+
+    return false;
+  }
+
+  // ...
+
+  bool CPRDetector::examine_context(const std::string &content) noexcept {
+    std::size_t spaces = 3;
+    std::array<std::size_t, 4> indices = {0, 0, 0, 0};
+
+    for (std::size_t i = 0; i < content.size(); ++i) {
+      if (content[i] == ' ') {
+        indices[4 - spaces] = i;
+        --spaces;
+        if (spaces == 0) {
+          if (find_blacklisted_words(content, indices))
+              return true;
+    
+          spaces = 3;
+          indices[0] = indices[3] + 1;
+        }
+      }
+    }
+
+    if (find_blacklisted_words(content, indices))
+      return true;
+
+    return false;
+  }
+#+end_src
+
+The collection of blacklisted words is contained in a ~constexpr~ array and then loaded
+statically into a ~FrozenHashSet~ at program startup only once. Since the ~blacklisted_words_set~
+is both static and const, there is no question about ownership and there is only one
+shared structure for all instances of ~CPRDetector~. This "pattern" of static loading into
+a shared immutable structure is used every time there is a large collection of words
+that need to be held in memory. This is reused in both the ~NameRule~ and the ~AddressRule~.
+
+*** Name Rule
+
+If it is assumed that all names must begin with a capital letter, then
+the search space can be narrowed down and the DFA for "name"-recognition
+can be designed as seen on figure [[name_dfa]]. Then this DFA can be implemented
+using a boolean to represent the two states. This boolean ~in_word~ is initialized
+to ~false~ and the search text is scanned for the occurance of a capital letter.
+When a capital letter is found, its position in the search text is stored, ~in_word~ is set
+to true and any following non-terminating symbol is read. Once a terminating symbol is reached,
+such as whitespace or punctuation characters, a candidate for a "name" has been found. \\
+
+At this point, it is unknown whether the substrings contained in ~results~ are actually
+recognized names. Therefore the candidate substrings must be filtered to determine the
+true names. The static loading technique mentioned earlier is used to store a list of
+officially recognized Danish names. A lookup is performed to check whether the candidate
+substring is indeed a recognized name. In the positive case, a ~MatchResult~ object containing the
+substring and position metadata is created and stored in a vector ~results~. The boolean ~in_word~
+is reset to ~false~ and the cycle is repeated for the rest of the search text. \\
+
+#+caption: DFA design for name recognition
+#+name: name_dfa
+#+ATTR_LATEX: :width 3cm :height 5cm
+[[./name_dfa.png]]
+
+#+begin_src C++
+  [[nodiscard]] MatchResults
+  NameRule::find_matches(const std::string &content) const noexcept {
+    MatchResults results;
+
+    static constexpr auto is_end_of_word =
+      make_predicate(' ', '.', '\n', '?', '-', '\t','\0');
+
+    bool in_word = false;
+    auto word_begin = content.cbegin();
+
+    for (auto iter = content.cbegin(); iter != content.cend(); ++iter) {
+      if (!in_word && std::isupper(*iter)) {
+        word_begin = iter;
+        in_word = true;
+      }
+
+      if (in_word && is_end_of_word(*iter)) {
+        auto word_end = iter;
+
+        if (contains(word_begin, word_end)) {
+          MatchResult result(
+              std::string(word_begin, word_end),
+              static_cast<std::size_t>(
+                  std::distance(content.cbegin(), word_begin)),
+              static_cast<std::size_t>(
+                  std::distance(content.begin(), word_end)));
+
+          results.push_back(result);
+        }
+
+        in_word = false;
+      }
+    }
+
+    if (in_word) {
+      auto word_end = content.cend();
+
+      if (contains(word_begin, word_end)) {
+        MatchResult result(
+            std::string(word_begin, word_end),
+            static_cast<std::size_t>(std::distance(content.cbegin(),
+                                                   word_begin)),
+            static_cast<std::size_t>(std::distance(content.begin(),
+                                                   word_end) - 1));
+
+        results.push_back(result);
+      }
+    }
+
+    return filter_matches(results);
+  }
+#+end_src
+
+Once all the single names have been found, names that are next to each
+other in the text are assumed to be related and thus constitute a 'full
+name'. As such, the =filter_matches()=-method reduces and combines
+related names to =MatchResult=-objects containing full names.
+
+#+begin_src C++
+[[nodiscard]] MatchResults
+NameRule::filter_matches(const MatchResults &matches) const noexcept {
+  MatchResults results;
+
+  std::optional<MatchResult> cursor = std::nullopt;
+
+  for (auto m : matches) {
+    if (cursor) {
+      if (m.is_after(cursor.value())) {
+        cursor = std::make_optional(compose(cursor.value(), m));
+      } else {
+        results.push_back(cursor.value());
+        cursor = std::make_optional(m);
+      }
+    } else {
+      cursor = std::make_optional(m);
+    }
+  }
+
+  if (cursor) {
+    results.push_back(cursor.value());
+  }
+
+  return results;
+}
+#+end_src
+
+The condition for two or more names to be related and thus constitute a "full name"
+is determined by their position. If there is a single character distance between
+two names, then they are combines. Note, that it isn't a requirement that the preceeding
+name must be a firstname, since a full name may appear as for example "Jensen J." in
+some texts.
+
+*** Address Rule
+
+Similar to the Name rule, any street name is also a name in a sense. So,
+we can reuse the same DFA for name recognition, but an address is
+incomplete if the street name isn't followed by a house number.
+The strategy is similar to that of the Name rule: find all candidate names
+and filter out the ones that are officially recognized. Except
+the combination stage is substituted for house number recognition
+which is done by implementing the designed DFA as seen in figure [[house_number_dfa]].
+
+#+caption: DFA design for house number recognition
+#+name: house_number_dfa
+#+ATTR_LATEX: :width 3cm :height 5cm
+[[./number_dfa.png]]
+
+#+begin_src C++
+[[nodiscard]] MatchResults
+AddressRule::find_matches(const std::string &content) const noexcept {
+  MatchResults results;
+
+  static const auto is_end_of_word = [](char c) { return c == ' '; };
+
+  bool in_word = false;
+  std::size_t counter = 0;
+  std::size_t word_begin, word_end = counter;
+  std::string address = "";
+
+  for (auto iter = content.begin(); iter != content.end(); ++iter) {
+    if (!in_word && std::isupper(*iter)) {
+      word_begin = counter;
+      address = "";
+      in_word = true;
+    }
+
+    if (in_word) {
+      if (is_end_of_word(*iter)) {
+        if (*iter == ' ' && std::isupper(*(iter + 1))) {
+            address += ' ';
+            ++counter;
+            continue;
+        }
+
+        word_end = counter;
+
+        if (contains(address.begin(), address.end())) {
+          results.push_back(MatchResult(address, word_begin, word_end));
+        }
+
+        in_word = false;
+      } else {
+        address += *iter;
+      }
+    }
+
+    ++counter;
+  }
+
+  return filter_matches(results, content);
+}
+#+end_src
+
+Below, we see the ~filter_matches()~ and ~append_number()~ methods, which checks for the occurance of a house number
+following a street name for each of the address candidates that have been found in the ~find_matches()~ method from
+earlier.
+
+#+begin_src C++
+[[nodiscard]] MatchResults
+AddressRule::filter_matches(const MatchResults &matches,
+                            const std::string &content) const noexcept {
+  MatchResults results;
+
+  for (auto m : matches) {
+    auto address_opt = append_number(m, content);
+    if (address_opt) {
+      results.push_back(address_opt.value());
+    }
+  }
+
+  return results;
+}
+
+// ...
+
+[[nodiscard]] std::optional<MatchResult>
+AddressRule::append_number(const MatchResult &m,
+                           const std::string &content) const noexcept {
+  if (content.size() == m.end() + 1)
+    return {};
+
+  if (content[m.end()] != ' ')
+    return {};
+
+  static const auto is_digit = [](char c) { return '0' <= c && c <= '9'; };
+  static const auto is_nonzero_digit = [](char c) { return '0' < c && c <= '9'; };
+
+  auto iter = content.begin() + static_cast<long>(m.end()) + 1;
+
+  if (!is_nonzero_digit(*iter))
+    return {};
+
+  std::string number = "";
+  number += *(iter++);
+  std::size_t counter = 1;
+
+  while (iter != content.end() && is_digit(*iter)) {
+    number += *(iter++);
+    ++counter;
+  }
+
+  std::string match_string = m.match() + " " + number;
+  return MatchResult(match_string, m.start(), m.end() + counter);
+}
+#+end_src
+
+*** Wordlist Rule
+
+This rule can be split into two specialized cases. One for flat
+wordlists and one for nested wordlists.
+
+**** =WordListRule=
+
+For this rule, we will not use the =FrozenHashSet= to store words, since
+the contents of a wordlist may change whenever the user desires it.
+Instead, the implementation will use =std::unordered_set= for this task.
+One could perhaps extend the ~FrozenHashSet~ with a mutable specialization,
+but ~std::unordered_set~ already satisfies all the requirements, so there
+is no need to reinvent the wheel. \\
+
+Below, we see the implementation for the ~find_matches()~ and ~check_match()~ methods
+
+#+begin_src C++
+void WordListRule::check_match(MatchResults &results,
+                               const std::string candidate,
+                               const std::size_t start,
+                               const std::size_t stop) const noexcept {
+  if (contains(candidate)) {
+    results.push_back(MatchResult(candidate, start, stop));
+  }
+}
+
+[[nodiscard]] MatchResults
+WordListRule::find_matches(const std::string &content) const noexcept {
+  MatchResults results;
+
+  static const auto is_delimiter =
+      make_predicate(' ', '\n', '.', ',', '\t', '!', '?');
+
+  std::size_t start = 0;
+  for (std::size_t i = 0; i < content.size(); ++i) {
+    if (is_delimiter(content[i])) {
+      check_match(results, content.substr(start, i - start), start, i);
+      start = i + 1;
+    }
+  }
+
+  check_match(results, content.substr(start), start, content.size() - 1);
+
+  return results;
+}
+#+end_src
+
+**** =OrderedWordlistRule=
+
+This rule involves some more complicated data structures. Partially due
+to this fact and a lack of time, this has been implemented in Python,
+which natively has both hash map, list, and iterator implementations. \\
+
+First, the queues are initialized by taking an iterator for each of
+each of the nested wordlists. Then, the keyword map is initialized with
+the first word of each of the nested wordlists as keys and the indices
+of the nested wordlist in the queues as values.
+Subsequently, the search text is split into words, where each word is
+striped of punctuation characters and casefolded. \\
+
+A lookup is performed for every word extracted from the search text.
+If a word appears in the keyword map, the keyword is removed from the
+map along the corresponding indices. For each of the indices, the next
+word from each of the corresponding nested wordlists in the queues is
+load into the keyword map. If the end of a wordlist is reached, the
+~next()~-function throws a ~StopIteration~ exception. This exception is
+caught and a result ~dict()~ is yielded. This process is repeated until
+there are no more words in the search text.
+
+#+begin_src python
+  from typing import Dict, Iterator, Optional
+  from string import punctuation
+
+
+  class OrderedWordlistRule:
+
+      def __init__(self, wordlists: list[list[str]]):
+          self._wordlists = wordlists
+
+      def find_matches(self, content: str) -> Optional[Iterator[dict]]:
+          if content is None:
+              return
+
+          queues = self._load_queues()
+          kw_map = self._init_kw_map(queues)
+
+          for word in content.split():
+              w = word.strip(punctuation).casefold()
+
+              if w in kw_map:
+                  for i in kw_map.pop(w):
+                      try:
+                          new_w = next(queues[i]).casefold()
+                          if new_w in kw_map:
+                              kw_map[new_w].append(i)
+                          else:
+                              kw_map[new_w] = [i]
+
+                      except StopIteration:
+                          yield {
+                              'match': " ".join(self._wordlists[i]),
+                              }
+
+      def _load_queues(self) -> list[Iterator[str]]:
+          return [iter(wl) for wl in self._wordlists]
+
+      def _init_kw_map(self, queues: list[Iterator[str]]):
+          kw_map = {}
+          for i, q in enumerate(queues):
+              first = next(q).casefold()
+              if first in kw_map:
+                  kw_map[first].append(i)
+              else:
+                  kw_map[first] = [i]
+
+          return kw_map
+#+end_src
+
+The way the iterators are used means that it is not necessary to
+copy the entire nested wordlists upon at the start of the algorithm,
+but each word can be loaded incrementally on demand.
+The memory structure for nested wordlists can be seen in the
+illustration below.
+
+#+caption: Memory structure for nested wordlists
+#+ATTR_LATEX: :width 3cm :height 5cm
+[[./wordlist_memory.png]]
+
+#+caption: Data structures applied in the implementation of
+=OrderedWordListRule=
+#+ATTR_LATEX: :width 7cm :height 5cm
+[[./wordlist_ds.png]]
+
+[fn:1] Rabin-Karp algorithm -
+       [[https://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm][Wikipedia]]

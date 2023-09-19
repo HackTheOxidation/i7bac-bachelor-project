@@ -1,0 +1,169 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Løsningsforslag
+
+Dette afsnit beskriver løsningsforslag for hver enkelt regel, som er blevet analyseret i forrige afsnit.
+Det er hensigten at selve løsningsforslaget skal være sprog-agnostisk, således at man i princippet
+kan implementere løsningen i hvilket som helst programmeringssprog. Dette gøres for at bringe fokus hen
+på selve algoritmerne og ikke koden. Løsningsforslaget vil også blive
+analyseret vha. af de samme metoder fra datalogisk modellering, så det for det første er muligt at
+sammenligne med en eksisterende implementering, men også at kunne forholde sig til selve problemstillingen
+som den tilhørende regel forsøger at løse. Som udgangspunkt forsøges det at bevare samme funktionalitet
+fra reglerne i det gamle system, medmindre at der kan være fordele i at ændre dette for lettere at
+kunne løse de tilhørende problemstillinger.
+
+** CPR-reglen
+
+Det hovedsaglige problem med den gamle implementering er, at algoritmen først finder et ti-cifret
+nummer og derefter begynder at filtrer gyldige kandidater fra, såsom numre, der begynder med eks. 4-9.
+Det er denne filtrering som er dyrt, når algoritmen skal betragte hele numret på en gang.
+Hvis man kan 'inline' en form for filtrering, så algoritmen ville kunne afvise og springe ugyldige numre
+over efter hver karakter i søgeteksten, så burde dette være mere effektivt. \\
+
+Som diskuteret i analyse-afsnittet, så viser det sig, at CPR-numre kan modelleres som et regulært sprog,
+der som nævnt kan implementeres som en endelige automaton med konstant hukommelsesforbrug. Denne nye opdagede
+fra denne rapport vil blive udnyttet i løsningen til denne regel. En Deterministisk Endelig Automaton (DFA)
+kan implementeres som et program, men det er der mange måder at gøre på. \\
+
+Eksempelvis, kunne dette være i form af en Mealy- eller en Moore-tilstandsmaskine, som er kendt fra
+digital system design, da disse sammen med DFA'er alle er endelige tilstandsmaskiner (FSM). Dette
+løsningsforslag vil tage inspiration fra disse maskiner, hvis egenskab er, at den næste tilstand afhænger
+både af den gamle tilstand samt et input. På den måde er det muligt at reducere antallet af tilstande
+ved tilgengæld at øge antallet af overgange mellem tilstandene i en maskine. \\
+
+Reduktion af tilstande er ønskeværdigt, set fra et software-design perspektiver, da dette er nemmere at
+implementere og vedligeholde. Hvor mange tilstande vil det så kræve for at implementere en tilstandsmaskine,
+der kan genkende et CPR-numre? Det er muligt at bruge ti tilstande, en for hvert cifre, hvis man kigger på
+både maskinens gamle tilstand og input i form af den næste karakter i søgeteksten, samt den forrige
+karakter. Dette giver dog flere mulige overgange, men dette er stadigvæk nemmere at implementere end
+tilstande. \\
+
+Der er blevet udviklet en tilstandsmaskin til algoritmen for løsningsforslaget. Denne kan ses i form af
+et UML tilstandsdiagram på figur [[Figur 8]].
+
+#+CAPTION: UML tilstandsdiagram for algoritmen bag den nye CPR-regel. I 'Sixth'-tilstanden forekommer der yderligere et tjek for skudår.
+#+NAME: Figur 8
+#+ATTR_LATEX: :width 3cm :height 18cm
+[[./artifacts/cpr_state_machine.png]]
+
+Selve algoritmen starter i 'Empty'-tilstanden og søger først efter tallene 0-3, karakter for karakter.
+Hvis algoritmen så finder et gyldigt tal, så skifter maskinen til 'First'-tilstanden. Her er det, at
+inspirationen fra Mealy maskinen bliver tyde: alt afhængigt af hvad det forrige tal var, så ændres
+mængden af gyldige tal. For eksempel, hvis der først blev læst et 3-tal, så er det kun 0 og 1 som
+er gyldige. Hvis der derimod blev læst et 1-tal, så er alle cifre gyldige som næste input.
+På den måde, så kan algoritmen ændre adfærd baseret på det forrige input, samt den gamle tilstand
+og input, og den kan på et tidligere tidspunkt afvise tal, der umuligt kan være et gyldigt CPR-numre. \\
+
+Desuden indføres der også en række andre tjeks. Eksempelvis, er der indført et tjek for skudår i
+'Sixth'-tilstanden. Derudover, så har 'Second', 'Fourth' og 'Sixth' også indre tilstande, som skal
+holde øje med om delle af numret er adskildt med eks. bindestreg, mellemrun, stråstreg, mm. \\
+Dermed sker alle tjeks 'inline', og der er ikke nogen grund til at have en 'ignore_irrelevant'-option
+mere. Subalgoritmen for 'check_mod11' er der ingen grund til at ændre i, da denne ikke giver en
+signifikant nedgang i hastighed. 'examine_context'-optionen skal forenkles, således at der kun tjekkes
+for de 'blacklistede' ord ved et ekstra gennemløb af søgeteksten, men ikke for 'whitelisted' ord
+i omegnen for hvert match. \\
+
+Samlet set får den nye algoritme en tidskompleksitet på $\mathcal{O}(n + m)$ ligesom den gamle,
+så her er det implementeringen, hvori der ligger en mulighed for bedre performance.
+
+** Navne-reglen
+
+Problemstillingen bag Navne-reglen er at finde forekomster af anerkendte navne i søgeteksten. Den gamle
+implementering forsøger at løse dette ved først at spørge: Er der sekvenser i søgeteksten, som ligner
+et 'fuldt navn'? Og, i tilfældet af 'expansive'-optionen, derefter: Er der ord tilbage i søgeteksten,
+som ligner 'enkelte navne'? \\
+
+Hvorfor ikke spørge: Er der ord i søgeteksten, som ligner et navn (stort begyndelsebogstav) og forekommer
+i listen over anerkendte navne? Når alle forekomster af anerkendte navne er fundet, kan algoritmen derefter
+sætte 'enkelte navne' sammen, hvis de står ved siden af hinanden i søgeteksten. På den måde, så kører
+algoritmen kun søgeteksten igennem en gang, hvilket er opfundet til denne rapport. \\
+
+Et andet problem med den gamle udgave af Navne-reglen er den måde, som samlingen af anerkendte opbevares
+på og søges i. \\
+
+Løsningsforslaget til Navne-reglen er inspireret af en udgave af Rabin-Karp algoritmen[fn:1]. Dette er en
+tekstsøgningsalgoritme, som er lavet til at finde forekomster af $k$ substrenge, alle af længde $m$,
+i en søgetekst med $n$ karakterer. Problemet her er dog, at alle substrenge skal være lige lange for
+at kunne opdele søgeteksten, og det er alle navne ikke. Denne kan dog løses ved at udnytte
+definitionen, at et 'enkelt navn' er substrenge, som har stort begyndelsebogstav og ikke må indholde
+mellemrum, linjeskift, punktum og så fremdeles. Dette kan man bruge en DFA til at genkende navne
+med denne definition i lineær tid. Hvis man så kombinerer denne DFA med en hash tabel fra Rabin-Karp
+algoritmen, der indholde alle anerkendte vejnavne og bruges til opslag undervejs, så kan man foretage
+denne søgning i lineær tid. \\
+
+DFA'en for denne algoritme skal finde et stort bogstav efterfulgt af nul til mange bogstaver. Grafen for
+denne kan ses på figur [[Figur 9]].
+
+#+CAPTION: Graf for DFA til navne-genkendelse. Denne maskine vil genkende eksempelvis 'Magenta' eller 'MAGENTA', men ikke 'maGenTa'.
+#+NAME: Figur 9
+#+ATTR_LATEX: :width 3cm :height 5cm
+[[./artifacts/name_dfa.png]]
+
+Med denne tilgang er det ikke længere nødvendigt med en 'expansive'-option, da alle 'enkelte navne'
+bliver fanget som standard. Samlet set får den nye algoritme en tidskompleksitet på $\mathcal{O}(n + m)$.
+
+** Adresse-reglen
+
+Problematikken med Adresse-reglen er næsten den samme som for Navne-reglen, og ligeledes er den nye løsning,
+da vejnavne også er en form for navne. Her skal der dog ikke foretages sammensætninger af 'enkelte navne'.
+Istedet skal foretages et tjek på, at et forekomsten af et anerkendt vejnavn skal være efterfulgt af et
+husnummer. Så udover DFA'en fra figur [[Figur 9]], så skal der bruges en DFA til genkendelse af positive heltal.
+Grafen for sådan en DFA kan ses på figur [[Figur 10]].
+
+#+CAPTION: Graf for DFA til genkendelse af husnumre for Adresse-reglen. Denne genkender numre såsom eks. 1 og 117, men ikke 007.
+#+NAME: Figur 10
+#+ATTR_LATEX: :width 3cm :height 5cm
+[[./artifacts/number_dfa.png]]
+
+Denne talgenkendelses-DFA vil kun blive brugt, hvis algoritmen først har fundet et anerkendt vejnavn.
+Man kunne tilføje flere DFA til genkendelse af etagenummer, postnummer og bynavn, men selv uden disse
+er kombinationen af et vejnavn og husnummer nok til at udgøre en, omend ikke unik, adresse. \\
+
+Med denne tilgang får den nye algoritme for Adresse-reglen en tidskompleksitet på $\mathcal{O}(n + m)$.
+
+** Ordliste-reglen
+
+Den gamle udgave af Ordliste-reglen viste sig i benchmarksne fra Analyse-afsnittet at køre så langsomt,
+at den er ubrugelig i praksis. Tilgengæld viste analysen af tidskompleksitet, at den gamle implementering
+stadigvæk kan køre i polynomial tid, så problemet er ikke beregningsmæssigt hårdt ('intractible'). \\
+
+Der er to interessante cases for denne problemstilling. Den første er tilfældet, hvor ordlisten er flad,
+dvs. der er kun en liste af ord, som ikke skal forekomme i en bestemt rækkefølge. Den anden er tilfældet,
+hvor der er mange nestede ordlister. En illustration af en nestede ordliste kan ses på figur [[Figur 11]].
+Den gamle Ordliste-reglen bruger en generaliseret løsning i og med, at den betragter disse to tilfælde
+som det samme problem. I det første tilfælde, så vil algoritmen gennemløbe søgeteksten for hver ord i ordlisten.
+Men, dette problem er nærmest identisk med det for Navne-reglen og Adresse-reglen, så hvorfor ikke udnytte en kendt løsning? \\
+
+#+CAPTION: Hukommelsesstruktur for en nestede ordliste.
+#+NAME: Figur 11
+#+ATTR_LATEX: :width 3cm :height 5cm
+[[./artifacts/wordlist_memory.png]]
+
+Derfor argumenteres der for, at lave en ny regel for hver af de to cases. Case 1, kaldet 'WordListRule',
+kan ligesom Adresse-reglen genanvende løsningsforslaget fra Navne-reglen, dog med den forskel, at
+der ikke søges efter stort begyndelsebogstav, men bare enkeltstående ord, hvilket giver en tidskompleksitet
+på $\mathcal{O}(n)$. \\
+
+Case 2, kaldet 'OrderedWordlistRule', kombinerer et array af linked-lister, som indholder sekvenser af ord,
+med et hashmap. Ved begyndelsen af algoritmen indsættes det første ord fra hver sekvens i hashmappet som
+nøgle med sekvensen index i arrayet som værdi. Derefter læses der et ord fra søgeteksten. Hvis dette
+ord er i hashmappet, så tages indexet, der bruges til at indsætte det næste ord i hashmappet fra samme
+sekvens. Herefter fjernes det forrige ord fra hashmappet. Når en sekvens i arrayet er tomt, så returneres
+et match. Dette forsætter for hvert ord i søgeteksten. En illustration af de anvendte datastrukturer kan
+ses på figur [[wordlist_ds]].\\
+
+#+CAPTION: Anvendte datastrukturer i algoritmen for case 2: nestede ordlister. Hashtabellen har søgeord som nøgle og index som værdi. Wordlist er et array af linked-lister, hvor hver node indholder et søgeord i en sekvens.
+#+NAME: wordlist_ds
+#+ATTR_LATEX: :width 7cm :height 5cm
+[[./artifacts/wordlist_ds.png]]
+
+Et hashmap har $\mathcal{O}(1)$ for insert og remove, et array har $\mathcal{O}(1)$ for random access og
+en linked-list har $\mathcal{O}(1)$ for insert og remove for den første node. Derudover kan opdeling
+af søgeteksten i ord foretages på $\mathcal{O}(n)$. Ved antagelse af at opbygning af arrayet med
+ord-sekvenserne sker andensteds og dermed betragtes som en parameter, så er den samlede tidskompleksitet
+$\mathcal{O}(n)$, hvilket er bedre end $\mathcal{O}(n + wn)$ for den gamle regel. Dette er en ny
+opfindelse, som ikke er set før.
+
+* Footnotes
+
+[fn:1] Rabin-Karp Algorithm, Multiple pattern search - Wikipedia: https://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm#Multiple_pattern_search 

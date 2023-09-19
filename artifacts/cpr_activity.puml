@@ -1,0 +1,33 @@
+@startuml
+:Check for content text;
+if (Examine Context) then (enabled)
+	:Check content text for blacklisted words;
+	if (Found blacklisted word?) then (yes)
+	stop
+	else (no)
+	endif
+else (disabled)
+endif
+:Find all 10-digit substrings with regex;
+while (For each substring)
+	if (if 'check_mod11') then (enabled)
+	:Calculate Modulus 11 sum;
+	:Discard strings with non-zero sums;
+	else (disabled)
+	endif
+	if (if 'ignore_irrelevant') then (enabled)
+	:Check the date for the first 6 digits;
+	:Discard strings with invalid dates;
+	else (disabled)
+	endif
+	if (if 'examine_context') then (enabled)
+	:Extract words surrounding the substring;
+	:Check surrounding words for blacklisted words;
+	:Lower match probability;
+	else (disabled)
+	endif
+	:Censor CPR;
+	:Yield Match Result;	
+endwhile
+stop
+@enduml

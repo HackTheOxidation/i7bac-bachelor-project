@@ -1,0 +1,31 @@
+@startuml
+[*] --> Empty
+Empty --> First
+First --> Second
+
+state Second {
+	[*] --> SecondNoSeparatorRead
+	SecondNoSeparatorRead --> SecondSeparatorRead
+}
+
+Second --> Third
+Third --> Fourth
+
+state Fourth {
+	[*] --> FourthNoSeparatorRead
+	FourthNoSeparatorRead --> FourthSeparatorRead
+}
+
+Fourth --> Fifth
+Fifth --> Sixth
+
+state Sixth {
+	[*] --> SixthNoSeparatorRead
+	SixthNoSeparatorRead --> SixthSeparatorRead
+}
+
+Sixth --> Seventh
+Seventh --> Eighth 
+Eighth --> Match
+Match --> [*] : Succeeded
+@enduml

@@ -1,0 +1,10 @@
+digraph number_dfa {
+    fontname="Helvetica,Arial-sans-serif"
+    node [shape = doublecircle] q2;
+    node [shape = point] qi;
+
+    node [shape = circle];
+    qi -> q1;
+    q1 -> q2 [label = "[1-9]"];
+    q2 -> q2 [label = "[0-9]"];
+}

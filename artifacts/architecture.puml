@@ -1,0 +1,33 @@
+@startuml
+left to right direction
+
+package libos2dsrules <<shared lib>> {
+	component CPRDetector
+	component NameRule
+	component AddressRule
+	component WordListRule
+}
+
+package os2ds-rules <<CPython extension>> as cpp {
+	component "detector module"
+	component "namerule module"
+	component "addressrule module"
+	component "wordlistrule module"
+}
+
+() "CPython C-API" as capi
+
+package os2ds-rules <<Python package>> as py {
+	component CPRDetector
+	component NameRule
+	component AddressRule
+	component WordListRule
+	component OrderedWordListRule
+}
+
+cpp -down-> libos2dsrules
+capi -down- cpp
+capi -up- py
+
+
+@enduml

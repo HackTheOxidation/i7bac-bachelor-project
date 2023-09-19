@@ -1,0 +1,26 @@
+#+TITLE: Referat for Vejledermøde 8 d. 2023-03-21
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-03-26
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 21. Marts 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+På dette møde blev der præsenteret en ny forløbig teoretisk-datalogisk kompleksitetsanalyse
+af Navnereglen. Samtidigt, blev der luftet ideer til en forenet løsning for Navneregl,
+Adresseregl, osv., da disse forsøger at løse tilsyneladende lignende problemer.
+
+Vejleder udpegede nogle mulige forbedringer til kompleksitetsanalyse-bilaget, herunder et
+udvidet introduktionsafsnit, hvor OS2datascanner's Engine system præsenteres for at give
+en baggrund for analysen, samt inkludere en form for diagram for hver regl, der viser
+algorithmens forløb fra et mere overordnet perspektiv.

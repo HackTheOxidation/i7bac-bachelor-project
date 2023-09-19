@@ -1,0 +1,8 @@
+#+TITLE: I7BAC - Bachelorprojekt
+#+AUTHOR: Tomas Hagenau Andersen - Studienummer: 201906721
+
+* What is this?
+
+This repo contains my project report for my bachelor's project (course name: I7BAC).
+
+Everything here is written using [[https://orgmode.org][org-mode]] and good ol' Emacs.

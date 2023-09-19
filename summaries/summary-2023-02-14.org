@@ -1,0 +1,23 @@
+#+TITLE: Referat for Vejledermøde 3 d. 2023-02-14
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-02-20
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 14. Februar 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Dette møde drejede sig hovedsagligt om de udkast til indledning og problemformulering der
+var lavet indtilvidere. Nu var udkasted blevet solidt nok til at andet arbejde, herunder
+analysearbejdet, kunne indledes og bearbejdes parallelt.
+
+Der blev ydermere vendt tekniske emner, som eks. valg af programmeringssprog, til overvejelse.

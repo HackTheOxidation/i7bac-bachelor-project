@@ -1,0 +1,18 @@
+@startuml
+:Load recognized names;
+:Make a copy of content text;
+:Scan text for all Capital-cased words that match full-name regex;
+while (For each Full-name)
+	:Check that firstname is a recognized name;
+	:Check that lastname is a recognized name;
+	:Check that all middlenames are recognized names;
+	:Yield Match Result;
+endwhile
+if (if 'expansive') then (enabled)
+	:Scan unmatched text for stand-alone names;
+	:Check that each stand-alone name is a recognized name;
+	:Yield Match Result for each stand-alone name;
+else (disabled)
+endif
+stop
+@enduml

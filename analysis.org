@@ -1,0 +1,659 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Analyse
+
+I dette afsnit fremlægges analysen. Analysen er foretaget ud fra to forskellige tilgange.
+Den ene er en teoretisk tilgang som anvender metoder fra datalogisk modellering til at ræsonnere om
+egenskaberne ved algoritmerne bag systemreglerne og samtidigt forholde sig til det problem som
+som algoritmerne egentlig skal forsøge at løse. Den anden er en praktisk/eksperimenteriel tilgang,
+der tager udgangspunkt i benchmarking og forholder sig til indsamlede målinger og data.
+Til sammen skal de to perspektiver give en klar bro mellem teori og praksis, og på den måde
+give et fyldestgørende helhedsbilled. \\
+Endeligt, så vil der også blive fremvist beviser om nogle af de problemer som reglernes algoritmer
+skal forsøge at løse. \\
+Det bør også nævnes, at analysen kun betragter den gamle udgave af regelsystemet i OS2datascanner.
+Forbedringer og algoritmer for de nye regel-implementeringer diskuteres i afsnittet "Løsningsforslag".
+
+** Datalogisk Modellering - Algoritmisk Analyse: Tidskompleksitet
+
+Datalogisk modellering er betegnelsen for en bred samling af teori og metoder til at
+karakterisere programmer med. En klassisk teknik er algoritmisk kompleksitetsanalyse,
+der har til formål at identificere et mål for køretiden (tidskompleksitet) og/eller
+hukommelsesforbruget (pladskompleksiteten) for en algoritme som funktion af inputstørrelsen.
+Dette er det primære redskab for den teoretiske del af analysen. Særligt vil der være
+fokus på tidskompleksiteten for algoritmerne bag de enkelte regler, da det er den egenskab
+som har den højeste prioritet ifh. slutbrugerens oplevelse. \\
+
+Reglerne vil blive analyseret hver for sig. For hver regel gives der først en introduktion til
+det bagvedlæggende problem, samt en mindre teknisk, men mere intuitiv forklaring af dens virkemåde.
+Dernæst vil der, i uddrag fra den tekniske dokumentation, blive foretaget en kompleksitetsanalyse
+for at finde en Asymptotisk øvre-grænse, $\mathcal{O}$, som giver en worst-case køretid for den
+underlæggende algoritme. En mere detaljeret udgave af kompleksitetsanalysen, samt et overblik
+over komponenterne i OS2datascanner's skannermotor, kan findes i den tekniske dokumentation. \\
+
+De følgende underafsnit vil ikke indeholder omstændige forklaringer for de uledte tidskompleksiteter. 
+Detaljerede uledninger af tidskompleksiteter for de omdiskuterede algoritmer kan findes i bilag 2: /Teknisk dokumentation/.
+
+*** CPR-reglen
+
+CPR-reglens formål er at detektere forekomster af CPR-numre i tekstuelle data. Hvis man kigger på
+opbygningen af et CPR-nummer, så har det ti cifre. De første seks cifre angiver en persons fødselsdato
+efter formatet 'DDMMÅÅ', altså dag, måned og de to sidste cifre af årstallet. De sidste fire cifre
+er et såkaldt løbenummer mellem 0001 og 9999. Løbenumrets paritet angiver kønnet på den tilhørende
+person: kvinder har lige løbenumre og mænd har ulige løbenumre. CPR-systemet er lavet til at kunne
+bruges for personer, som er født i perioden 1858-2057. \\
+
+Eftersom, at denne periode strækker sig over flere århundreder, og i og med at det kun er de sidste
+to cifre af årstallet, som fremgår direkte i et CPR-nummer, så anvendes det første cifre i løbenumret
+til at indikere århundredet. Dette er en vigtig detalje pga. skudår, da et nummer, som begynder med
+'290200' er gyldigt, hvis personen er født i år 2000, men ikke i år 1900. \\
+
+Derudover er der også det såkaldte Modulus-11 regel. Dette er en matematisk betingelse, som et
+CPR-nummer skal overholde for at være gyldigt. Modulus-11 reglen vil blive uddybet senere
+i et kommende underafsnit. Dog er der blevet lavet en ændring, således at CPR-numre for personer
+født i 2007 og senere ikke nødvendigvis skal overholde Modulus-11 reglen for at være gyldige.
+Yderligere beskrivelse af CPR-numre kan findes i [cite:@cpr_doc]. \\
+
+Virkemåden for den gamle implementering af CPR-reglen har et overordnet flow, der kan beskrives
+med et forenklet UML Aktivitetsdiagram. Dette kan ses på figur [[Figur 2]]. \\
+
+#+CAPTION: UML Aktivitetsdiagram for CPR-reglen. Dette afbilleder det fulde kontrolflowet for algoritmen inklusiv de tre options 'check_mod11', 'ignore_irrelevant' og 'examine_context'.
+#+NAME: Figur 2
+#+ATTR_LATEX: :width 5cm :height 18cm
+[[./artifacts/cpr_activity.png]]
+
+Den gamle implementering af CPR-reglen har også tre options: /check_mod11/, /ignore_irrelevant/ og /examine_context/.
+Disse ændre flowet og vil blive gennemgået herunder, hver for sig, for at gøre analysen enkel og overskuelig.
+
+**** Standardalgoritmen uden options
+
+Standardalgoritmen for CPR-reglen anvender et regulært udtryk til at søge efter forekomster af ti
+cifre som kan være adskilt med eks. mellem eller bindestreg på udvalgte steder. Men, disse ti cifre
+kan være hvilke som helst cifre og er ikke nødvendigvis et CPR-numre. Eksempelvis vil det regulære
+udtryk opfange /9999999999/, som ikke er et gyldigt CPR-numre. Disse forekomster returners censoreret
+uden de sidste fire cifre, dvs. /111111-1111/ vil blive vist som /111111-XXXX/, sammen med anden relevant
+metadata, såsom start- og slutindex i søgeteksten. \\
+
+Worst-case tidskompleksiteten for standardalgoritmen for CPR-reglen er $\mathcal{O}(n + m)$, hvor $n$ er
+længden af søgeteksten og $m$ er antallet af matches i søgeteksten. 
+
+**** Option: 'check_mod11'
+
+Denne option udvider standardalgoritmen ved at tilføje et tjek, som filtrer alle matches fra, der ikke overholder
+Modulus-11 reglen. For at et CPR-nummer overholder Modulus-11 reglen, så skal summen af hvert cifre ganget
+med en bestemt faktor gå op i 11. \\
+Som eksempel foretages et tjek af Modulus-11 reglen for /111111-1118/ herunder:
+\begin{align*}
+1\cdot 4 &= 4 \\
+1\cdot 3 &= 3 \\
+1\cdot 2 &= 2 \\
+1\cdot 7 &= 7 \\
+1\cdot 6 &= 6 \\
+1\cdot 5 &= 5 \\
+1\cdot 4 &= 4 \\
+1\cdot 3 &= 3 \\
+1\cdot 2 &= 2 \\
+8\cdot 1 &= 8 \\
+&\Downarrow \\
+4 + 3 + 2 + 7 + 6 &+ 5 + 4 + 3 + 2 + 8 = 44 \\
+&\Downarrow \\
+Mod(44, 11) &= 0
+\end{align*}
+Eftersom at alle CPR-numre har ti cifre, kan dette tjek beregnes på konstant køretid. \\
+
+Af den grund, så ændrer tilføjelsen af dette tjek ikke på Worst-case tidskompleksiteten set ift.
+standardalgoritmen, som er $\mathcal{O}(n + m)$.
+
+**** Option: /ignore_irrelevant/
+
+I og med at standardalgoritmen bare finder vilkårlige ti-cifrede numre, udvider denne option algoritmen
+med tjeks, for at sikre, at et mistænkt nummer har format som et CPR-nummer, dvs. /DDMMÅÅ-XXXX/. Så
+her vil numre, hvor de syv første cifre repræsentere en ugyldig dato, eller hvor løbenumret eksempelvis
+er /0000/ (hvilket ikke er tilladt), blive filtreret fra. \\
+
+Disse tjeks kan alle foretages på konstant køretid, så det ændre ikke på Worst-case tidskompleksiteten
+set ift. standardalgoritmen, som er $\mathcal{O}(n + m)$.
+
+**** Option: /examine_context/
+
+Der kan være tilfælde, hvor et ti-cifret nummer opfylder alle kriterier for at være et CPR-nummer, men
+at det egentlig repræsentere noget helt andet, som eksempelvis et fakturanummer, ordrenummer el. lign.
+For at reducere antallet af falsk positiver, så tilføjer denne /examine_context/-option extra skridt
+til standardalgoritmen. \\
+
+Det første skridt er at gennemsøge hele søgeteksten for forekomster af såkaldte
+'blacklisted' ord. Der er en default liste af 'blacklisted' ord, men det er også muligt for brugeren
+selv at bestemme, hvilke ord, der skal være 'blacklisted'. Hvis der bliver fundet et ord i søgeteksten,
+som er 'blacklisted', så returnerer algoritmen med det samme og udelukker dermed forekommer af CPR-numre
+i søgeteksten. Dvs., at denne søgning foretages før standardalgoritmen indtræffer.
+Hvis der ikke bliver fundet 'blacklisted' ord, så træder standardalgoritmen i kraft som normalt. \\
+
+Det andet skridt er at tjekke den omkringliggende tekst for hvert match som standardalgoritmen finder,
+og så filtrere matches fra, hvor der i de halvtreds karakterer, enten til venstre eller til højre for
+matchet, forekommer ord, der er 'whitelisted'. Konceptet bag 'whitelisted' ord er det samme som for
+'blacklisted' ord, bortset fra, at 'whitelisted' ord indikerer, at et mistænkt nummer helt sikkert
+er et CPR-nummer. \\
+
+Disse tilføjelser er implementeret således, at de ikke ændre på Worst-case tidskompleksiteten
+set ift. standardalgoritmen, som er $\mathcal{O}(n + m)$. 
+
+*** Navne-reglen
+
+Navne-reglen er lavet til at finde forekomster af personnavne i tekstuelle data. Dette gælder både
+fornavne, efternavne og fulde navne, og det er i princippet intuitivt at forstå. Problemet opstår,
+hvis man forsøger at finde en præcis definition for, hvad et gyldigt personnavn er.
+I nogle lande er der ingen regler for, hvad en person kan kalde sig. I sådan et tilfælde kan
+et navn i princippet være hvad som helst. \\
+
+Uden en rigid definition vil dette gøre det meget svært at lave et system, som ikke ville rapportere
+en masse falske positiver, da ethvert ord kunne være et navn. Man kunne dog vælge kun at betragte ord med stort
+begyndelsesbogstav, da dette ville indskrænke søgerummet, men der vil stadig være udfordringer
+med eksempelvis det første ord i en sætning, hvor man i mange sprog, der bruger det latinske alfabet,
+anvender stort begyndelsesbogstav uanset hvad. I nogle sprog, eksempelvis tysk, anvendes der også
+stort begyndelsesbogstav foran alle substantiver, så dette gør udfordringen endnu mere vanskelig. \\
+
+Her kan den danske lovgivning dog være behjælpelig, da man i Danmark kun kan antage et navn som
+fremgår af anerkendte navnelister. Eftersom at OS2datascanner primært henvender sig til det danske
+marked, er dette en rimlig antagelse som den gamle implementation af Navne-reglen er bygget ud fra. \\
+
+Dette leder hen til selve den gamle implementering af Navne-reglen, hvis overordenede flow er
+illustreret med et forenklet UML Aktivitetsdiagram, som kan ses på figur [[Figur 3]]. \\
+
+#+CAPTION: UML Aktivitetsdiagram for Navne-reglen. Dette afbilleder det fulde kontrolflow for algoritmen inklusiv optionen: 'expansive'.
+#+NAME: Figur 3
+#+ATTR_LATEX: :width 7cm :height 18cm
+[[./artifacts/name_activity.png]]
+
+Navne-reglen har en option, der kan slåes til: /expansive/. Denne option udvider programflowet og analyseres
+for sig selv herunder.
+
+**** Standardalgoritmen uden options
+
+Standardalgoritmen for Navne-reglen virker ved, at der ved første brug af reglen bliver indlæst lister
+af fornavne og efternavne, som algoritmen skal søge efter. Disse lister bliver cached, så det er kun ved
+første brug, at denne indlæsning forekommer. Herefter laves der en kopi af søgeteksten, som dog kun kommer
+i spil, hvis /expansive/ option er slået til. \\
+
+Dernæst anvendes der et regulært udtryk til at finde
+forekomster af 'fulde navne', som er minimum to ord, men maksimalt fem ord, hvor hvert ord har stort
+begyndelsesbogstav. Ordene må kun være adskilt af mellemrum, så dobbeltnavne som 'Jens-Peter' tæller
+kun som et ord i den forstand. \\
+
+For hvert af disse 'fulde navne' undersøges de enkelte navne. Det
+første navn skal fremgå i listen over fornavne, og det sidste navn skal ligeledes fremgå i listen
+over efternavne. Navne mellem det første og det sidste skal fremgå i en af de to nævnte lister.
+Hvis et 'fuldt navn' opfylder de nævnte kriterier, så tildeles dette match et sandsynlighedsmål for
+hvor følsomt dette navn er. Dette returneres sammen med det 'fulde navn' og relevant metadata, såsom
+position i søgeteksten. \\
+
+Gennemsøgning af søgeteksten ved brug af et regulært udtryk kan køres på lineær tid, og for
+hvert match, der bliver fundet vha. af dette, skal der foretages et antal beregninger, som
+alle kan afvikles på konstant tid under antagelse af, at listerne med for- og efternavne er
+konstante. Alt i alt gør dette, at Worst-case tidskompleksiteten for standardalgoritmen bag
+Navne-reglen er $\mathcal{O}(n + m)$.
+
+**** Option: /expansive/
+
+Standardalgoritmen for Navne-reglen finder kun 'fulde navne' som defineret i forrige afsnit, ikke enkelte
+navne. Dette er formålet med denne /expansive/-option. Her tilføjes der et extra led til standardalgoritmen,
+hvor en kopi af søgeteksten bliver gennemløbet for hvert fundet 'fulde navn', som fjernes herfra. Derefter
+gennemsøges teksten for alle enkeltstående navne som fremgår af navnelisterne. For hvert fundet enkeltstående
+navn bliver der returneret et match objekt med det fundende navn, samt relevante metadata. \\
+
+Ved at tilføje disse extra tjek til Navne-reglen, så ændres Worst-case tidskompleksiteten til $\mathcal{O}(n + nm)$,
+set ift. standardalgoritmen, som er $\mathcal{O}(n + m)$.
+
+*** Adresse-reglen
+
+Adresse-reglen er lavet for at kunne finde forekomster af adresser i tekstuelle data. Den
+bagvedlæggende problemstilling ligner meget den for Navne-reglen. I modsætning til personnavne, så
+er det tilgengæld noget nemmere at definere præcist, hvad en adresse er. Man kunne bruge definitionen,
+at en adresse er et gyldigt vejnavn efterfulgt af et vejnummer, som muligvis kan være efterfulgt
+af et gyldigt postnummer og et gyldigt bynavn. \\
+
+Ligesom med navnelisterne, så findes der også en liste over alle gyldige vejnavne i Danmark.
+Det anvender Adresse-reglen som brugbar definition. Det er nok muligt at finde en officiel liste
+over postnumre og bynavne i Danmark, men dette benytter Adresse-reglen sig ikke af. Dette er gjort
+ud fra antagelsen om, at et vejnavn sammen med et husnummer er nok til, omend ikke unikt, at
+identificere en adresse. Modsat Navne-reglen, så har Adresse-reglen ingen options, der kan slåes
+til eller fra. \\
+
+Eftersom, at Adresse-reglen ikke har nogen options, så er programflowet også enklere. På figur [[Figur 4]]
+ses et UML aktivitetsdiagram for Address-reglens kontrolflow.
+
+#+CAPTION: UML Aktivitetsdiagram for Adresse-reglen.
+#+NAME: Figur 4
+#+ATTR_LATEX: :width 6cm :height 10cm
+[[./artifacts/address_activity.png]]
+
+Grundet det enklere flow er der kun en standardalgoritme, som skal analyseres.
+
+**** Standardalgoritmen
+
+Standardalgoritmen for Addresse-reglen ligner meget den for Navne-reglen i og med, at der anvendes en
+endelig liste af anerkendte vejnavne og et regulært udtryk, som søger efter forekomster af substrenge,
+der har formatet: vejnavn og husnummer, muligvis efterfulgt af etagenummer, postnummer og bynavn. For
+hvert af disse forekomster tjekkes det, at vejnavnet er i listen over anerkendte vejnavne. Hvis
+vejnavnet er anerkendt forsætter algoritmen med at undersøge om vejnavnet optræder i en brugerspecificeret
+'blacklist'. 'Blacklisted' vejnavne forøger /sensitivity/ for et match. /Sensitivity/ er et arbitrert
+sandsynlighedsmål for, hvor følsomme de oplysninger, som et match indeholder, er. OS2datascanner systemet
+anvender fem niveauer af /sensitivity/ i stigende orden: /Information/, /Notice/, /Warning/, /Problem/
+og /Critical/. Et 'blacklisted' vejnavne resulterer i en /sensitivity/ på /Critical/ fremfor /Problem/
+for et match med Adresse-reglen. \\
+
+Analysen af standardalgoritmens tidskompleksitet viser, at algoritmen har en køretid på $\mathcal{O}(n + m)$.
+Her er $n$ længden af søgeteksten og $m$ er antallet er matches som søgeteksten indeholder.
+
+*** Ordliste-reglen
+
+Med Ordliste-reglen kan en bruger specificere en liste af ordlister, som systemet skal søge efter.
+En ordliste skal her forståes som en sekvens af ord, der skal optræde i søgeteksten efter hinanden.
+Da Ordliste-reglen heller ikke har nogle options, så er programflowet også rimlig enkelt.
+Et UML aktivitetsdiagram for Ordliste-reglens kontrolflow kan ses på figur [[Figur 5]].
+
+#+CAPTION: UML Aktivitetsdiagram for Ordliste-reglen.
+#+NAME: Figur 5
+#+ATTR_LATEX: :width 6cm :height 10cm
+[[./artifacts/wordlist_activity.png]]
+
+**** Standardalgoritmen
+
+Standardalgoritmen for Ordliste-reglen virker ved, at der først bliver lavet en kopi af søgeteksten,
+hvor alle karakterer er 'lower-case'. Dernæst søger algoritmen efter det første ord for hver af
+ordlisterne. Hvis det første ord i en ordliste bliver fundet, søges der efter det næste ord i den
+samme ordliste, osv. Hvis alle ordene i en af ordlisterne optræder i søgeteksten, så returneres
+der et match resultat objekt. \\
+
+Kompleksitetsanalysen viser, at standardalgoritmen for Ordliste-reglen har en køretid på $\mathcal{O}(n + nw)$,
+hvor $n$ er længden på søgeteksten og $w$ er antallet af ordlister, som søgeteksten skal gennemsøges for.
+
+** Benchmarks
+
+Dette afsnit omhandler benchmarking af den gamle implementation af reglsystemet i OS2datascanner.
+Benchmarking bliver anvendt for opnå konkrete målinger og data for at danne et sammenligningsgrundlag
+for et reelt system. Kompleksitetsanalyse giver et abstrakt mål for udviklingen af operations som
+funktion af inputstørrelsen for en given algoritme, men disse funktioner indeholder konstanter som
+kan variere afhængigt af den konkrete hardware, som skal afvikle programmet. Derfor kan være svært
+at sammenligne to algoritmer, som tilhører den samme kompleksitetsklasse.
+
+Den valgte hardware-platformen for disse benchmarks har følgende relevate specifikationer:
+
+- *CPU*: AMD Ryzen 5 3600, Base clock: 3.6GHz, Kerner: 6, Tråde: 12
+- *GPU*: AMD ATI Radeon RX 6700 XT
+- *RAM*: 16GB, Type: DDR4, Frekvens: 3200MHz
+
+GPU'en bliver ikke brugt af den gamle udgave af systemet, men den kan muligvis komme i spil i de
+nye implementeringer. Derudover er platformen udstyret med følgende software:
+
+- *Operativ System*: Fedora Linux 37 x86_64, Kernel version: 6.2.9-200.fc37
+- *C++ Compiler*: g++ (GCC) 12.2.1
+- *Python*: CPython v3.9.7 (container, used in current system)
+  and v3.11.2 (host, used in new system)
+- *OCI Container engine*: Docker, version 23.0.3, build 3e7cbfd
+
+OS2datascanner anvender docker som OCI Container engine for at isolere de enkelte komponenter i systemet.
+Grundet tæt kobling i designet, som heller ikke er dokumenteret nogen steder, men kun kan ses ved inspektion
+af systemets kildekode, har det ikke været muligt at udtrække reglsystemet fra resten af komponenterne,
+så det kan benchmarkes på host-maskinen. Derfor er alle benchmarks for det gamle system blevet kørt
+i et Container miljø, hvilket muligvis kan have påvirket målingerne i en negativ retning, men det er
+ikke blevet undersøgt. \\
+
+Systemet er blevet benchmarket ud fra 'kunstige' datasæt, da det ikke har været muligt at få adgang
+til data fra OS2datascanner's kunder, eftersom at disse data indeholder både personfølsomme og
+hemmelige oplysninger. Derfor er der blevet lavet nogel kunstigt datasæt. Disse datasæt er baseret
+på offentlige tilgængelige data, hvor der bl.a. er indsat gyldige, men falske, CPR-numre for 
+at kunne fraprovokere, at en algoritme kommer ud i et Worst-case tilfælde. Et af disse datasæt
+er bygget ud fra Wikipedia siderne: [[https://en.wikipedia.org/wiki/List_of_victims_of_the_September_11_attacks][List of victims of the September 11 attacks]].
+Det andet datasæt er teksten fra pdf-versionen af GCC 12.2 Manualen[fn:5] som er udtrukken vha.
+værktøjet /pdftotext/. Dette giver datasæt på henholdsvis ca. 2.2MB og 2.7MB, men dette er for småt
+og vil sandsynligvis forårsage afvigelse i målingerne. Derfor er disse blevet kopieret 300 gange
+for at minimere afvigelsen og sikre at eksempelvis caching ikke er årsagen til eventuelle forskelle
+i køretider. Samlet set er størrelsen på datasætne henholdsvis ca. 660MB og 810MB. \\
+
+Benchmarks er blevet kørt fra Python vha. af /pytest/[fn:1] og tilhørende plug-in /pytest-benchmark/[fn:2].
+Disse fungerer ved at køre en unittest-funktion nogle gange (kaldet 'Rounds') og herunder måle
+bl.a. minimum-, maksimum- og gennemsnitstid, samt standardafvigelse, operationer pr. sekund, mm.
+
+*** CPR-reglen
+
+CPR-reglen er blevet benchmarket med ovenstående setup med alle mulige kombinationer af den options.
+Resultaterne kan ses i tabel [[Tabel 1]].
+
+#+CAPTION: Resultater af benchmarks for CPR-reglen i det gamle system.
+#+NAME: Tabel 1
+| data set | /ignore_irrelevant/ | /check_mod11/ | /examine_context/ | Mean time (s) | Rounds |
+|----------+-------------------+-------------+-----------------+---------------+--------|
+| wiki     | Disabled          | Disabled    | Disabled        |       17.4567 |      5 |
+| wiki     | Enabled           | Disabled    | Disabled        |       17.3978 |      5 |
+| wiki     | Disabled          | Enabled     | Disabled        |       17.4082 |      5 |
+| wiki     | Enabled           | Enabled     | Disabled        |       17.4031 |      5 |
+| wiki     | Disabled          | Disabled    | Enabled         |       33.2116 |      5 |
+| wiki     | Enabled           | Disabled    | Enabled         |       33.2534 |      5 |
+| wiki     | Disabled          | Enabled     | Enabled         |       33.0945 |      5 |
+| wiki     | Enabled           | Enabled     | Enabled         |       33.0134 |      5 |
+| gcc      | Disabled          | Disabled    | Disabled        |       19.3008 |      5 |
+| gcc      | Enabled           | Disabled    | Disabled        |       19.2081 |      5 |
+| gcc      | Disabled          | Enabled     | Disabled        |       19.2106 |      5 |
+| gcc      | Enabled           | Enabled     | Disabled        |       19.3008 |      5 |
+| gcc      | Disabled          | Disabled    | Enabled         |       39.0410 |      5 |
+| gcc      | Enabled           | Disabled    | Enabled         |       38.9838 |      5 |
+| gcc      | Disabled          | Enabled     | Enabled         |       39.1035 |      5 |
+| gcc      | Enabled           | Enabled     | Enabled         |       38.7461 |      5 |
+
+Ud af de forskellige kombinationer af options, så ses det for begge datasæt, at det tager
+næsten dobbelt så langt tid at køre, hvis /examine_context/-optionen er slået til.
+
+*** Navne-reglen
+
+Navne-reglen er blevet benchmarket med ovenstående både med og uden /expansive/-option slået til.
+Resultaterne kan ses i tabel [[Tabel 2]].
+
+#+CAPTION: Resultater af benchmarks for Navne-reglen i det gamle system.
+#+NAME: Tabel 2
+| data set | /expansive/ | Mean time (s) | Rounds |
+|----------+-----------+---------------+--------|
+| wiki     | Disabled  | 111.1803      |      5 |
+| wiki     | Enabled   | TIMEOUT       |      5 |
+| gcc      | Disabled  | 34.5217       |      5 |
+| gcc      | Enabled   | TIMEOUT       |      5 |
+
+Som det kan ses i tabel [[Tabel 2]], så har kørslen med 'expansive'-optionen slået til resulteret i en
+timeout, da testen kørte i over 5 timer, hvorefter det blev besluttet at afbryde benchmarkingen.
+Der er bemærkelsesværdigt, at der er en forskelle mellem wiki og gcc datasætne, hvor det tager
+næsten tre gange længere tid at søge i wiki datasættet selvom det er mindre. Dette kan muligvis
+skyldes, at wiki datasættet indeholder flere navne-lignende ord, hvilket åbenbart er dyrt at
+lave sammenligning på.
+
+*** Adresse-reglen
+
+Resultaterne for benchmarks af Adresse-reglen kan ses i tabel [[Tabel 3]].
+
+#+CAPTION: Resultater af benchmarks for Adresse-reglen i det gamle system.
+#+NAME: Tabel 3
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |       57.0632 |      5 |
+| gcc      |       68.3224 |      5 |
+
+*** Ordliste-reglen
+
+Resultaterne for benchmarks af Ordliste-reglen kan ses i tabel [[Tabel 4]].
+
+#+CAPTION: Resultater af benchmarks for Ordliste-reglen i det gamle system.
+#+NAME: Tabel 4
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     | TIMEOUT       |      5 |
+| gcc      | TIMEOUT       |      5 |
+
+Ligesom for Navne-reglen så resulterede kørslen i en timeout, da testen kørte i over 5 timer,
+hvorefter det blev besluttet at afbryde benchmarkingen.
+
+** Beviser
+
+I dette afsnit vil der blive fremlagt beviser om egenskaberne for nogle af de problemstillinger som de
+gamle regler forsøger at løse. Inden for datalogien er formelle sprog et velstuderet emne, da det danner
+grundlag for konstruktionen af eksempelvis programmeringssprog, hvor man f.eks. i en compilers lexer
+og parser komponenter skal bruge algoritmer til genkendelse af nøgleord i kildekode. I tilfældet for
+OS2datascanner's reglsystemet skal der også bruges algoritmer til genkendelse af "nøgleord", så på den
+måde er problemstillingen egentlig den samme. Derfor giver det mening at forsøge at modellere en
+mængde af "nøgleord" som et formelt sprog. \\
+
+De formelle sprog er opdelt i klasser efter deres udtrykskraft,
+og hver klasse har en tilsvarende beregningsmodel (eng. "Model of Computation"), som kan genkende et
+tilhørende sprog. Hver klasse af beregningsmodel har en tids- og en pladskompleksitet for genkendelse af det
+tilhørende sprog. Ergo, kan man bevise, at et sprog tilhører en klasse af formelle sprog, så har man
+bevist, at der findes en tilsvarende beregningsmodel, som kan genkende sprog indenfor en bestemt køretid
+og et bestemt hukommelsesforbrug. Det såkaldte Chomsky Hieraki for formelle sprog kan ses på figur [[Figur 6]].\\
+
+#+CAPTION: Chomsky Hierakiet for formelle sprog. Kilde: [[https://en.wikipedia.org/wiki/Chomsky_hierarchy][Chomsky Hierarchy - Wikipedia]].
+#+NAME: Figur 6
+#+ATTR_LATEX: :width 5cm :height 4cm
+[[./figures/Chomsky-hierarchy.png]]
+
+Før beviserne fremlægges, vil der blive givet en kort, overordnet introduktion til noget af den anvendte
+viden inden for formelle sprog og beregningsmodeller. For en mere dybdegående introduktion til disse emner
+anbefales enten [cite:@toc_sipser chap. 1] eller [cite:@toc_hopcroft chap. 1-4].
+
+Den simpleste klasse af formelle sprog er de regulære sprog. Hvert regulær sprog er beskrevet som en
+mængde af strenge. Denne mængde er konstrueret ud fra et alfabet, ofte betegnet $\Sigma$ og mængdeoperationer.
+Eksempler på mængdeoperationer er foreningsmængde og fællesmængde, som er kendt fra mængdelære, men der er  
+operationer, der er specifikke for regulære sprog, såsom concatenation, $\cdot$, og Kleene's star, $^*$,
+samt et særligt element: den tomme streng, $\epsilon$.
+Concatenation operatoren sammensætter strenge, dvs. for to strenge, $a$ og $b$, betyder concatenation
+$ab$: $a$ efterfulgt af $b$. Kleene's star er en unary operator, der tager en streng, $a$, og returnerer en
+uendelig mængde af strenge med nul til mange forekomster af $a$. Eksempler på regulære sprog med anvendelse
+af concatenation og Kleene's star kunne være:
+\begin{align*}
+\Sigma &= \{a, b, c\} \\
+a\cdot b &= \{ab\} \\
+a^* &= \{\epsilon, a, aa, aaa, aaaa, aaaaa, \ldots\} \\
+bc^* &= \{b, bc, bcc, bccc, bcccc, bccccc, \ldots\} \text{ Kleene's star har precedence} \\
+(ac)^* &= \{\epsilon, ac, acac, acacac, acacacac, \ldots\}
+\end{align*}
+
+Den tilsvarende beregningsmodel for regulære sprog er endelige automata (eng. finite automata).
+Der er forskellige typer af endelige automata, men den vigtigste i denne sammenhæng er deterministiske
+endelige automata (DFA), da det er den type af endelige automata, som man kan implementere i computerprogrammer.
+En DFA, $M$, kan beskrives matematisk som en 5-tuple, der består af:
+
+1) Et alfabet, $\Sigma$, som består af en endelig mængde af symboler.
+2) En endelig mængde af tilstande, $Q$.
+3) En begyndelsestilstand, $q_0$.
+4) En overgangsrelation, $\delta: \Sigma \times Q \rightarrow Q$, der angiver gyldige overgange
+   mellem tilstande ved læsning af et symbol.
+5) En endelig mængde af sluttilstande, $F \subseteq Q$.
+
+Ofte, så er overgangsrelationen, $\delta$, defineret vha. en tabel.
+Men, den kan også repræsenteres som en graf struktur.
+Som eksempel, er der på figur [[Figur 7]] lavet en DFA for det regulære sprog $ab^*$, hvis alfabet er, $\Sigma = \{a, b\}$. \\
+
+#+CAPTION: Eksempel på en Deterministisk Endelig Automaton (DFA) for det regulære sprog $ab^*$ som graf.
+#+NAME: Figur 7
+#+ATTR_LATEX: :width 8cm :height 8cm
+[[./figures/example_dfa.png]]
+
+Uanset hvordan man vælger at repræsentere en endelige automaton, så omtales de alle som 'maskiner'.
+Eksempelvis bruges dette i udtryk som: maskinen, $M$, genkender sproget, $L$, eller omvendt:
+$L(M)$ er sproget for maskinen. \\
+
+Der findes andre typer af endelige automata, såsom non-deterministiske endelige automata (NFA), der
+også er ekvivalente til både DFA'er og regulære sprog, men disse bruges udelukkende til modellering
+og kan ikke implementeres direkte på en rigtig computer, så de vil ikke blive gennemgået her.
+
+*** CPR-numre som Regulært Sprog
+
+Her vil der blive fremlagt et bevis for, at CPR-numre kan modelleres som et formelt sprog,
+og at dette sprog er regulært. Den officielle specifikation for CPR-systemet beskriver CPR-numre
+tekstuelt på en letlæselig måde, som gør det let for tekniske, såvel som ikke-tekniske personer,
+at forstå koncepterne og opbygningen af et CPR-nummer. Der er dog en ulempe ved sådan en form for
+specifikation i og med, at man er nødsaget til at fortolke den, da den ikke er baseret på
+matematiske formler eller indeholder pseudokode, hvilket kan give anledning til forskellige opfattelser. \\
+
+For at kunne diskutere CPR-numre og implementeringer, der involverer dem, så er der valgt at indføre
+en definition af CPR-numre som et formelt sprog. For kunne gøre dette, er dokumentationen blevet fortolket,
+hvilket som nævnt er problematisk. Derfor er det ikke muligt at kunne sige med sikkerhed, at denne
+fortolkning er korrekt. Men, for formele sprog findes der redskaber og teknikker, der kan beskrive
+nogle egenskaber ved et givent sprog. Derfor er der, ved fortolkning, fundet frem til følgende definition: \\
+
+Lad alfabetet, $\Sigma$, bestå af alle cifre: $\Sigma = \{0,1,2,3,4,5,6,7,8,9\}$. \\
+Lad $C$ være sproget for alle gyldige CPR-numre således at:
+\begin{align*}
+C &= (\{dmyk : d \in D, m \in M, y \in Y, k \in K\} \setminus I) \cup L 
+\end{align*}
+hvor $I$, $L$, $D$, $M$, $Y$ and $K$ alle er endelige sprog defineret som:
+\begin{align*}
+I &= \{dyk : d \in \{3102,3002,2902,3104,3106,3109,3111\}, y \in Y, k \in K\} \\
+L &= \{2902yk : y \in Y_{4}, k \in K \} \cup \{290200abbb : a \in \{4,5,6,7,8,9\}, b \in \Delta \} \\
+D &= \{\{0a : a \in \Delta_{+} \}\cup\{1a|2a : a \in \Delta\}\cup\{30,31\}\} \\
+M &= \{\{0a : a \in \Delta_{+} \}\cup\{10,11,12\}\} \\
+Y &= \{ab : a,b \in \Delta\} \\
+Y_{4} &= \{04, 08, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96\} \\
+K &= \{aaaa : a \in \Delta\} \setminus \{0000\} \\
+\Delta &= \Sigma \\
+\Delta_{+} &= \Delta \setminus \{0\}
+\end{align*}
+
+Med denne definition kan der nu fremføres et bevis for, at sproget for alle gyldige CPR-numre, $C$,
+er et regulært sprog:
+
+\begin{theorem}
+Lad $C$ være sproget for alle gyldige CPR-numre. $C$ er regulær.
+\end{theorem}
+
+\begin{proof}
+Fra definitionen af regulære sprog, så kan et sprog defineres ud fra andre endelige sprog
+vha. operatorerne $\cup$, $\cap$, $\setminus$, $\cdot$ og $*$, da alle de nævnte operatorer
+er lukket over de regulære sprog ('Closure properties'). \\
+
+Eftersom, at $I$, $L$, $D$, $M$, $Y$, $Y_{4}$ og $K$, samt $\Delta$ er endelige (og dermed regulære) sprog, så er
+$C$ også regulær pga. 'Closure properties'.
+\end{proof}
+
+Udover fortolkningsproblemet, så er der en anden ulempe, som bør nævnes. Nemlig, at denne definition ikke
+tager forbehold for Modulus11-reglen. Dette er dog ikke et problem, da CPR-administrationen i den
+officielle dokumentation[fn:3] udtaler at: "CPR-kontoret skal derfor understrege, at alle it-systemer
+bør indrettes således, at personnumre uden modulus 11 kan håndteres."
+
+** Valg af Teknologi
+
+Dette afsnit behandler valg af teknologi til den nye implementering af regelsystemet. De anvendte
+teknologier i det eksisterende system vil også blive diskuteret, da dette har indfyldelse på
+teknologivalgene for det nye system, da det kun er regelsystemet, som kan fornyes. Dette stiller
+allerede et krav i form af, at al nyindført teknologi skal være kompatibelt med teknologier i
+det gamle system. For det gamle system anvendes der mange mindre pakker og biblioteker,
+men her vil der kun blive fokuseret på de mest essentielle teknologier.
+
+*** Teknologier i det gamle system
+
+Det gamle system er primært bygget i Python 3, dog med enkelte undtagelser i Admin- og Rapportsystemerne,
+der har enkelte frontend-dele skrevet i JavaScript, hvor Python kan overføre data til JavaScript
+vha. web-frameworket django[fn:4]. Selve skannermotoren, engine2, er dog skevet 100% i Python 3.
+Altså det vil sige, at der kun optræder Python i skannermotorens kildekode, men der anvendes Python
+pakker, som kan have udvidelser i C/C++ eller andre programmeringssprog. \\
+
+Derudover anvendes der to andre kerneteknologier: /Docker/[fn:6] og /RabbitMQ/[fn:7]. /Docker/ er en OCI container engine[fn:8],
+som anvendes til at adskille de større systemkomponenter, og fungerer på mange måder som en virtuel
+maskine ved, at man isoleret kan køre et operativ system inde i et operativ system. De fleste af delsystemerne
+i OS2datascanner kører en containerized udgave af Debian Linux 11 "Bullseye". \\
+
+Der er også et element af sikkerhed, da delsystemerne i princippet er helt isoleret fra hinanden og ikke kan tilgå
+hinandens resourcer og processer. På den måde kan delsystemerne kun kommunikere med hinanden og omverdenen
+gennem tilladte grænseflader. \\
+
+En af de grænseflader er /RabbitMQ/, som er en message broker, der anvender /AMQP/-protokollen version 0-9-1[fn:9].
+Dette gør det muligt for OS2datascanner at være et distribueret system, således at de enkelte delsystemer i
+princippet kan befinde sig på forskellige maskiner og stadigvæk fungerer sammen. \\
+
+Selve regelsystemet og dets logik befinder sig udelukkende i skannermotoren. Men, brugererne opretter
+skannerjob i Admin-systemet, hvor man bl.a. skal vælge, hvilke regler som der skal skannes med. Dette
+betyder, at en regel skal "kunne overføres" mellem delsystemerne. Dette bruges /RabbitMQ/ til ved, at man
+anvender en /JSON/-baseret repræsentation af en regel, som man så kan sende rundt til de forskellige delsystemer.
+Når skannermotoren så får en /AMQP/ besked fra RabbitMQ med en repræsentation af en regel, så kan denne
+regel instantieres ud fra metadataene i denne besked. \\
+
+Alt i alt sætter det tre overordenede krav til teknologivalgene for det nye regelsystem:
+
+- Det skal kunne kommunikere med Python 3.
+- Det skal kunne installeres og køres i en OCI container (/docker/) med /Linux/.
+- Det skal kunne oversættes til /JSON/-baserede beskeder, som kan distribueres med /AMQP/ via. /RabbitMQ/.
+
+*** Teknologier i det nye system
+
+Eftersom, at det kun er regelsystemet, der skal skiftes, så er det et krav, at det skal kunne bruges af resten
+af det gamle system. Hvad angår programmeringssprog kunne det virke oplagt også at skrive
+et nye regelsystem i Python 3. Det er der en del fordele i, nemlig at Python 3 allerede køre i systemet
+og dermed virker i sammenspil med både containerized Linux og /RabbitMQ/. \\
+
+Dog er der en ulempe ved dette: performance, eller rettere mangle på performance. Eftersom dette er
+hovedformålet for dette projekt, så kan der ikke ses bort fra, da Python i dataintensive applikationer
+ikke alene er hurtig nok. Dette har holdet bag Debian Linux forsøgt at undersøge i deres "The Computer
+Language Benchmarks Game"[fn:10]. Det er dog svært at lave en retvisende sammenligning af performance
+for to forskellige programmeringssprog, da det både afhænger af, hvordan sprogene er implementeret og
+hvilke programmer og anvendelser man sammenligner. Men, ifølge disse benchmarks, så er Python3 markant
+langsommere end C/C++. Det er bl.a. derfor, at Python frameworks til dataintensiv Machine Learning, såsom
+eksempelvis numpy[fn:11], har stor dele af deres kodebase, som er skrevet i C og C++. \\
+
+En del af denne forskel stammer bl.a. fra at referenceimplementeringen af Python, CPython, er en
+interpreter med /Reference Counted (RC) Garbage Collection/. Der eksisterer også andre implementeringer
+af Python, såsom PyPy[fn:12], der anvender /Just-In-Time/ (JIT) kompilering, eller Cython[fn:13], der kan oversætte
+dele af udvided Python kode til C og derefter til maskinkode. \\
+
+Disse kunne muligvis være alternativer, hvis man skulle blive i Python-verdenen, men der er dog en ulempe
+i og med, at alle alternative implementeringer skal rette sig efter CPython som reference, hvilket gør,
+at det langt fra er alle alternative implementeringer, som kan følge med den udvikling. Dette er noget
+anderledes ift. eksempelvis C++, hvor selve sproget er ISO-standardiseret med en ny version ca. hver
+tredje år siden C++11 i 2011. Cython har i skrivende stund ikke nået en stabil version 1.0.0 endnu. 
+Den seneste version af PyPy3, version 7.3, er kompatibel med Python3.9, hvor CPython er på version 3.11. \\
+
+Dette tyder på, at det ikke er muligt udelukkende at blive i Python-verdenen uden ulemper, hvis der skal
+ske betydelige performance forbedringer. Hvad er der så af muligheder, som kan kommunikere med Python?
+Det klassiske valg er C/C++, som begge er understøttet i CPython til at lave udvidelser med[fn:14].
+Selve CPython er skrevet i C, så denne mulighed giver præcis kontrol over manipulationen af CPythons
+interne repræsentationer af Python objekter og andre sprogkonstruktioner. Dog bør andre alternativer
+overvejes inden denne tilsyneladende åbenlyse valg bliver besluttet i al hast. \\
+
+I OS2datascanner teamet, samt i resten af Magenta, er der i en længere periode blevet overvejet at
+indføre enten Go[fn:15] eller Rust[fn:16]. Begge sprog kan man klassificere som systemprogrammeringssprog,
+da de er udviklet med både lav-niveau og dataintensive anvendelser i mente. Begge oversætter kildekode
+til maskinkode i deres referenceimplementeringerne. Go er udviklet af bl.a. Ken Thompson, som også er
+en af opfinderne af Unix og C. Go kan anskues som en forbedret udgave, hvor man har forsøgt at rette
+op på nogle af udfordringerne ved at kode i C, såsom manuelt hukommelsesallokering og udvikling af
+parallele systemer. \\
+
+Hvis Go er en pendant til C, så er Rust en pendant til C++. Modsat C++, så har Rust ikke noget modersprog
+som det direkte stammer fra, men er derimod en samling af elementer fra mange forskellige sprog med
+forskellige programmeringsparadigmer. Det mest interessante ved Rust er dog dets målsætning om at kunne
+garantere automatiseret hukommelsessikkerhed uden brug af Garbage Collection. Rust opnår dette vha.
+en såkaldt Borrow Checker[fn:17], som undersøger variablers levetider og nægter at kompilere programmer,
+hvor ugyldige levetider vil medfører kritiske fejl såsom hukommelseslækkage eller segmenteringsfejl.
+Som en sidegevinst kan denne Borrow Checker også detektere data races i parallele system og vil
+ligeledes nægte at kompilere disse. På den måde er det i teorien umuligt at lave et program i Rust
+med hukommelsesfejl. Dog er det nogle gange nødvendigt, at foretage handlinger, hvor Borrow Checkeren
+vil afvise programmet, så programmøren kan manuelt overstyre dette ved hjælpe af såkaldte 'unsafe'-blokke. \\
+
+På papiret ser begge disse lovende ud, da de i øvrigt kan anvende og udstille kode vha. C's ABI. Men,
+der er et problem. Nemlig, at få Go og/eller Rust til at kommunikere med Python. Der findes frameworks
+og værktøjer, såsom PyO3 for Rust[fn:18], der muligvis kunne løse dette problem, men det er uvist, om
+der er et signifikant performance overhead ved sådanne frameworks. Den anden mulighed er selv at
+implementere en form for kompatibilitetslag, men her vil der nok skulle skrives noget kode i C/C++ til
+at "lime" det sammen. Desuden flytter det også fokuset for projektet over til at få eksempelvis Go eller
+Rust til at kommunikere med CPython, og det er jo ikke en del af problemstillingen. \\
+
+Derfor lander valget på C/C++ som primært programmeringssprog, dog med mindre dele i Python3 til bl.a. at
+udstille et brugbart API, da det ikke er hele skannermotoren, som skal omskrives. I kurset 'Advancerede
+Programmeringskoncepter' - SWAPK er der opnået erfaring med nyere standarder som C++20. Da der ikke
+er nogle blokerende begrænsninger fra det gamle system, ser der ikke umiddelbart ud til at være
+nogle ulemper ved at anvende en nyere standard, som i skrivende stund er bredt understøttet af
+gængse C++ compilere[fn:19]. 
+
+* Footnotes
+
+[fn:19] cppreference.com - Compiler support for C++20: https://en.cppreference.com/w/cpp/compiler_support/20 
+[fn:18] PyO3 user guide: https://pyo3.rs/v0.18.3/ 
+
+[fn:17] References and Borrowing - Rust documentation: https://doc.rust-lang.org/1.8.0/book/references-and-borrowing.html 
+[fn:16] Rust Programming Language: https://www.rust-lang.org/ 
+
+[fn:15] The Go Programming Language: https://go.dev/ 
+[fn:14] Extending and Embedding the Python Interpreter: https://docs.python.org/3/extending/index.html 
+
+[fn:13] Cython: https://cython.org/ 
+[fn:12] PyPy: https://www.pypy.org/ 
+
+[fn:11] Numpy kildekode - GitHub: https://github.com/numpy/numpy 
+[fn:10] The Computer Language Benchmark Games 23.02 - Python3 vs C++: https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/python3-gpp.html
+
+[fn:9] AMQP Working Group 0-9-1: https://www.amqp.org/specification/0-9-1/amqp-org-download 
+[fn:8] Open Container Initiative: https://opencontainers.org/ 
+
+[fn:7] RabbitMQ message broker: https://www.rabbitmq.com/ 
+[fn:6] docker documentation: https://docs.docker.com/ 
+
+[fn:5] GCC online documentation - GCC 12.2 Manual: https://gcc.gnu.org/onlinedocs/gcc-12.2.0/gcc.pdf
+[fn:4] django - The web framework for perfectionists with deadlines: https://www.djangoproject.com/ 
+
+[fn:3] Personnumre uden kontrolciffer (modulus 11 kontrol): https://cpr.dk/cpr-systemet/personnumre-uden-kontrolciffer-modulus-11-kontrol 
+[fn:2] pytest-benchmark officielle website: [[https://pytest-benchmark.readthedocs.io/en/latest/index.html]]
+
+[fn:1] pytest officielle website: [[https://docs.pytest.org/en/7.2.x/contents.html]]

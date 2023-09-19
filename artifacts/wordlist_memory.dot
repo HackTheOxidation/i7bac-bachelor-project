@@ -1,0 +1,9 @@
+digraph memory {
+    node [shape=record];
+    rankdir=LR;
+    nested_wl [label="<m0> 0 | ... | ... | ... | ... | ... | <mn> n"];
+    nested0 [label="<m0> This | is | the | first | list"];
+    nestedn [label="<mn> This | is | the | last | list"];
+    nested_wl:m0 -> nested0:m0;
+    nested_wl:mn -> nestedn:mn;
+}

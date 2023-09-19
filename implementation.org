@@ -1,0 +1,425 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Implementering
+
+Dette afsnit diskutere omsætningen af løsningsforslagene til konkrete implementeringer.
+Eftersom de nye regler implementeres som extensions til CPython i C++, så er arkitekturen
+og meget af designet låst fast af valget af CPython[fn:1]. På figur [[Figur 12]] ses et UML Deployment
+diagram, som viser komponenter og grænseflader med indbyrdes relationer for det nye regelsystem.
+Derfor fokuseres der på anvendelse af idiomer og valg af features i C++ og Python. \\
+
+#+CAPTION: UML Deployment diagram for os2ds-rules CPython extension. \\
+#+NAME: Figur 12
+[[./artifacts/architecture.png]]
+
+Inden, at de enkelte regler bliver diskuteret, vil den generelle opbygning blive analyseret. Som det
+kan ses på figur [[Figur 12]], så bygges der et /shared library/, kaldet /libos2dsrules/, hvori selve
+implementeringerne af de nye algoritmer ligger. Disse bliver så kaldt fra CPython extension,
+/os2ds-rules/, der står for kommunikation og oversættelse mellem Python og C/C++ via.
+C-API'et i CPython. \\
+
+På Python-siden er der en pakke, som også hedder /os2ds-rules/, som udstiller
+funktionalitet fra CPython extension, samt en ren Python-udgave af /OrderedWordListRule/.
+Dette design gør det muligt at bruge de nye regler i Python gennem denne extension, men
+også direkte i C/C++ ved at linke med /libos2dsrules/, således at muligheden for kodegenbrug
+er større. \\
+
+Der er valgt at anvende C++20 til de fleste af reglerne. For at muliggøre polymorfisme for
+eksterne brugere, så er der lavet et C++20 ~concept~ som beskriver interfacet for en regel.
+Denne kan ses på listing [[CPP_Concept]]. Dette giver kode, der er tilpas generisk uden at anvende
+nedarvning. \\
+
+#+CAPTION: C++20 concept for reglerne i /libos2dsrules/. \\
+#+NAME: CPP_Concept
+#+begin_src C++
+  template <typename Rule>
+  concept ScannerRule = requires(Rule rule, std::string s) {
+    { Rule::sensitivity } -> std::same_as<Sensitivity>;
+    { rule.find_matches(s) } -> std::same_as<MatchResults>;
+  };
+#+end_src
+
+Derudover, så er der lavet en mekanisme et at tjekke som en ~char~ er en af de symboler, hvor en
+regel evt. skal ændre tilstand el.lign. Dette er gjort ved at kombinere lambda-udtryk med
+variadic templates som kan ses på listing [[predicate]]. \\
+
+#+CAPTION: Funktion til at sammenligne karakterer for reglerne i /libos2dsrules/. \\
+#+NAME: predicate
+#+begin_src C++
+  #include <functional>
+
+  using Predicate = std::function<bool(char)>;
+
+  template <typename T>
+    requires std::same_as<T, char>
+  constexpr auto make_predicate(T d) noexcept {
+    return [d](T c) { return c == d; };
+  }
+
+  template <typename T, typename... Args>
+  constexpr auto make_predicate(T d, Args... ds) noexcept {
+    if constexpr (sizeof...(ds) > 0) {
+      return [d, ds...](T c) {
+        return make_predicate(d)(c) || make_predicate(ds...)(c);
+      };
+    } else
+      return make_predicate(d);
+  }
+#+end_src
+
+Desuden er der valgt at undgå brugen af ~Exceptions~ vha. ~noexcept~, da disse kan udløse stack-unwinding,
+som er langsomt. Da de vigtigste delte komponenter er blevet præsenteret, vil de enkelte
+regel-implementeringer blive gennemgået. Den komplete dokumentation kan ses i vedlagte
+bilag 2: /Teknisk dokumentation - Solution Proposals/.
+
+** CPR-reglen
+
+Løsningsforslaget for CPR-reglen indebærer anvendelse af en DFA, som har tilstande. Disse
+tilstande kan implementeres i C++ med ~enum class~, som er en 'strongly-typed' udgave af et
+~enum~ fra C. Med en ~enum class~ kan man også bestemme den underliggende datatype vha. nedarvning.
+Dette kan ses på listing [[enum]]. \\
+
+#+CAPTION: C++ Kildekode for ~enum class CPRDetectorState~ af den nye CPR-regel. Dette er et 'strongly typed' enum, der forbyder implicit conversions og kun fylder 1 byte. \\
+#+NAME: enum
+#+begin_src C++
+  enum class CPRDetectorState : unsigned char {
+    First,
+    Second,
+    Third,
+    Fourth,
+    Fifth,
+    Sixth,
+    Seventh,
+    Eighth,
+    Match
+  };
+#+end_src
+
+Ved at nedarve fra ~unsigned char~, så fylder et ~CPRDetectorState~-objekt kun en byte i hukommelsen.
+Eftersom, at denne tilstand skifter ofte, så der mindre hukommelse, som skal opdateres hver gang.
+I kombination med et ~switch~ statement kan man repræsentere og skifte denne tilstand baseret
+på den næste ~char~ i søgeteksten vha. et ~Predicate~-funktionsobjekt. Et kodeuddrag af dette kan ses på
+listing [[switch]]. \\
+
+#+CAPTION: Kodeuddrag med anvendelse af ~Predicate~ og ~switch~-statement til at implementere en DFA for den nye CPR-regel. I hver tilstand betragtes det forrige input ~previous~, hvilket bestemmer hvilke forventede karakterer, som er gyldige for denne tilstand. \\
+#+NAME: switch
+#+begin_src C++
+
+  // Snippet
+  Predicate is_acceptable = [](char) { return false; };
+  // ...
+
+  switch(state) {
+    // ...
+      case CPRDetectorState::First:
+        if (previous == '0') {
+          is_acceptable = is_nonzero_digit;
+        } else if (previous == '1' || previous == '2') {
+          is_acceptable = is_digit;
+        } else if (previous == '3') {
+          is_acceptable = make_predicate('0', '1');
+        } else {
+          reset(state);
+          previous = *it;
+          continue;
+        }
+
+        previous = cpr[1] =
+            update(*it, CPRDetectorState::Second, state, is_acceptable);
+
+        if (previous != 0)
+          // Next time, we allow a space.
+          allow_separator = true;
+
+        break;
+     // ...
+  }
+#+end_src
+
+Tilsammen udgører disse de hovedsagelige og mest interessante elementer af implementeringen af den
+nye CPR-regel. Denne implementeringsstrategi sikre, at søgeteksten kun gennemløbes en gang og
+siden at ændring af tilstand kan gøres på $\mathcal{O}(1)$ tid, så har implementeringen samlet set
+en lineær køretid som ønsket.
+
+** Navnereglen
+
+Hovedelementet i Navne-reglen er implementeringen af en DFA, som kan genkende navne. Dette bygger
+på denne definition, at et navn er et ord med stort begyndelsesbogstav, der optræder i en liste
+over anerkendte navne, som beskrevet i løsningsforslaget. Denne DFA er her blevet implementeret
+i C++ vha. ~const_iterator~ og ~Predicate~ (fra figur [[predicate]]). Grunden til at iteratorer er valgt
+frem for eks. ~range~-baserede for-loops er, at start- og slutposition skal bruges til at indikere
+for brugeren præcis, hvor i søgeteksten matchet forekommer. Afstanden mellem to iteratorer kan
+beregnes med ~std::distance()~. Et kodeuddrag af den hovedsagelige del af algoritmen kan ses
+på listing [[find_names]].
+
+#+CAPTION: Kodeuddrag fra ~find_matches()~-metoden i den nye Navne-regel. Her anvendes iteratorer og ~Predicate~ til at detektere navne. \\
+#+NAME: find_names
+#+begin_src C++
+  // snippet
+
+  // ...
+  MatchResults results;
+
+  static constexpr auto is_end_of_word =
+    make_predicate(' ', '.', '\n', '?', '-', '\t','\0');
+
+  bool in_word = false;
+  auto word_begin = content.cbegin();
+
+  for (auto iter = content.cbegin(); iter != content.cend(); ++iter) {
+    if (!in_word && std::isupper(*iter)) {
+      word_begin = iter;
+      in_word = true;
+    }
+
+    if (in_word && is_end_of_word(*iter)) {
+      auto word_end = iter;
+
+      if (contains(word_begin, word_end)) {
+        MatchResult result(
+            std::string(word_begin, word_end),
+            static_cast<std::size_t>(
+                std::distance(content.cbegin(), word_begin)),
+            static_cast<std::size_t>(std::distance(content.begin(), word_end)));
+
+        results.push_back(result);
+      }
+
+      in_word = false;
+    }
+  }
+
+  // ...
+#+end_src
+
+For at kunne lave et hurtigt opslag om et navn er anerkendt, så anvendes først ~std::to_array()~ til at
+indlæse listerne over anerkendte navn på compile-time, hvorefter disse indlæses statisk ved programopstart
+i  ~FrozenHashSet~, som er denne rapports implementering af uforanderlige hash tabler med opslag på $\mathcal{O}(1)$
+(kan findes i vedlagte kildekode under ~include/data_structures.hpp~). På listing [[name_lists]] ses et kodeuddrag,
+som foretager indlæsning af navnelisterne. \\
+
+#+CAPTION: Kodeuddrag fra Navne-reglen. Her indlæses lister af fornavne og efternavne, først i et ~std::array<std::string_view>~ ved compile-time og dernæst statisk i et ~FrozenHashSet~. \\
+#+NAME: name_lists
+#+begin_src C++
+  // ...
+
+  #include <os2dsrules.hpp>
+  #include <data_structures.hpp>
+  #include <name_rule.hpp>
+
+  using namespace OS2DSRules::DataStructures;
+  // ...
+
+  // Snippet
+
+  // ...
+  using namespace std::string_view_literals;
+
+  namespace {
+  static constexpr auto firstnames = std::to_array({
+  #include "datasets/female_firstnames.txt"
+  #include "datasets/male_firstnames.txt"
+  });
+
+  static constexpr auto lastnames = std::to_array<std::string_view>({
+  #include "datasets/lastnames.txt"
+  });
+  static const auto firstnames_set = FrozenHashSet(firstnames);
+  static const auto lastnames_set = FrozenHashSet(lastnames);
+  }; // namespace
+
+  // ...
+#+end_src
+
+Da søgeteksten kun gennemløbes en gang, samt at hvert opslag i en hash tabel har $\mathcal{O}(1)$, så
+har denne implementering en lineær køretid ligesom løsningsforslaget foreskriver.
+
+** Adressereglen
+
+Adresse-reglen anvender nærmest den samme algoritme som Navne-reglen, der kan ses et uddrag af på listing [[find_names]], til at finde vejnavne istedet.
+Tilgengæld, så skal Adresse-reglen også finde et efterfølgende husnummer. Dette er der lavet en ~append_number()~-funktion til, som
+implementerer en talgenkendelses-DFA. Et kodeuddrag med denne funktion kan ses på listing [[append_number]]. \\
+
+#+CAPTION: Kodeuddrag fra den nye Adresse-regel, som viser implementeringen af ~append_number()~-metoden. Denne søger efter forekomst af et efterfølgende husnummer for et vejnavn. Her bruges ~std::optional~ som effektiv fejlhåndteringsmekanisme. \\
+#+NAME: append_number
+#+begin_src C++
+  // Snippet
+  
+  // ...
+  [[nodiscard]] std::optional<MatchResult>
+  AddressRule::append_number(const MatchResult &m,
+                             const std::string &content) const noexcept {
+    if (content.size() == m.end() + 1)
+      return {};
+
+    if (content[m.end()] != ' ')
+      return {};
+
+    static const auto is_digit = [](char c) { return '0' <= c && c <= '9'; };
+    static const auto is_nonzero_digit = [](char c) { return '0' < c && c <= '9'; };
+
+    auto iter = content.begin() + static_cast<long>(m.end()) + 1;
+
+    if (!is_nonzero_digit(*iter))
+      return {};
+
+    std::string number = "";
+    number += *(iter++);
+    std::size_t counter = 1;
+
+    while (iter != content.end() && is_digit(*iter)) {
+      number += *(iter++);
+      ++counter;
+    }
+
+    std::string match_string = m.match() + " " + number;
+    return MatchResult(match_string, m.start(), m.end() + counter);
+  }
+  // ...
+#+end_src
+
+Ligesom Navne-reglen, så kan denne implementering maksimalt gennemløbe søgeteksten en gang
+og har ligeledes en lineær køretid, der stemmer overens med løsningsforslaget for Adresse-reglen.
+
+** Ordlistereglen
+
+Som nævnt tidligere er der lavet to implementeringer af Ordliste-reglen med være sit speciale, der
+vil blive gennemgået hver for sig.
+
+*** /WordListRule/
+
+Denne implementering takler casen med en flad ordliste. Taktikken er næsten den samme som for både
+Navne-reglen og Adresse-reglen mht. brug af ~FrozenHashSet~. Dog søges der her efter udvalgte stop-symboler,
+som adskiller ord. Eksempler på dette er mellemrum, punktum, komma, osv. På listing [[wlr]] ses et uddrag af
+koden, som viser den meget simple implementering af ~find_matches()~-metoden for ~WordListRule~.
+
+#+CAPTION: Kodeuddrag for den nye ~WordListRule~, som viser implementeringen af ~find_matches()~ og ~check_match()~. \\
+#+NAME: wlr
+#+begin_src C++
+  #include <cstddef>
+  #include <os2dsrules.hpp>
+  #include <string_view>
+
+  #include <wordlist_rule.hpp>
+
+  // Snippet
+
+  // ...
+
+  void WordListRule::check_match(MatchResults &results,
+                                 const std::string candidate,
+                                 const std::size_t start,
+                                 const std::size_t stop) const noexcept {
+    if (contains(candidate)) {
+      results.push_back(MatchResult(candidate, start, stop));
+    }
+  }
+
+  [[nodiscard]] MatchResults
+  WordListRule::find_matches(const std::string &content) const noexcept {
+    MatchResults results;
+
+    static const auto is_delimiter =
+        make_predicate(' ', '\n', '.', ',', '\t', '!', '?');
+
+    std::size_t start = 0;
+    for (std::size_t i = 0; i < content.size(); ++i) {
+      if (is_delimiter(content[i])) {
+        check_match(results, content.substr(start, i - start), start, i);
+        start = i + 1;
+      }
+    }
+
+    check_match(results, content.substr(start), start, content.size() - 1);
+
+    return results;
+  }
+
+  // ...
+#+end_src
+
+Denne implementering gennemløber kun søgeteksten en gang, så den har en lineær køretid, hvilket stemmer
+overens med løsningsforslaget.
+
+*** /OrderedWordListRule/
+
+Denne udgave er blevet implementeret i Python. Det relevante kodeuddrag kan ses på listing [[owl]].
+Først initialiseres de nestede ordlister ~queues~, som er en ~list~ af ~list_iterator~, samt hashtabellen
+~kw_map~. ~indices~ er en ~list~ af ~tuple[int, int]~, som holder på indicer for ordlisterne, men den er ikke
+vigtig for algoritmen som helhed. Søgeteksten opdeles i ord med ~.split()~-metoden. For hvert ord tjekkes
+det om ordet er nøgle i ~kw_map~. Hvis det er tilfældet, så tages de tilsvarende indicer i ~kw_map~, hvor
+der forsøges at hente det næste ord i ~queues[i]~ med ~next()~-funktionen. Hvis ~queues[i]~ er tom, kastes
+en ~StopIteration~-exception, hvilket betyder, at alle ord i en nestede ordliste er fundet, og der
+yieldes et resultat. Hvis ~queues[i]~ ikke er tom, så indsættes det næste ord i ~kw_map~.
+
+#+CAPTION: Uddrag af Python kildekode for implementeringen af /OrderedWordListRule/. Her er den omkrænsende klasse og definitionerne af metoderne ~self._load_queues()~, ~self._init_kw_map()~ og ~self._update_indices()~ undladt. \\
+#+NAME: owl
+#+begin_src python
+  from string import punctuation
+
+  def find_matches(self, content: str):
+      if content is None:
+          return
+
+      queues = self._load_queues()
+      kw_map = self._init_kw_map(queues)
+      indices = [(0, 0, True) for _ in queues]
+
+      begin = 0
+      for word in content.split():
+          end = len(word)
+          w = word.strip(punctuation).casefold()
+
+          if w in kw_map:
+              for i in kw_map.pop(w):
+                  try:
+                      self._update_indices(indices, i, begin, end)
+                      new_w = next(queues[i]).casefold()
+                      if new_w in kw_map:
+                          kw_map[new_w].append(i)
+                      else:
+                          kw_map[new_w] = [i]
+
+                  except StopIteration:
+                      begin, end, _ = indices[i]
+                      context_begin = max(begin - 50, 0)
+                      context_end = min(end + 50, len(content))
+                      yield {
+                          'match': " ".join(self._wordlists[i]),
+                          "offset": begin,
+                          "context": content[slice(context_begin, context_end)],
+                          "context_offset": context_begin,
+                          }
+          begin = end + 1
+#+end_src
+
+Køretiden for denne implementerings er afhængig af både længden af søgeteksten, samt størrelsen på
+samlingen af nestede ordlister. Dette stemmer overens med løsningsforslaget for ~OrderedWordListRule~.
+
+** Implementering generelt
+
+Som det kan ses i de forrige afsnit, så er det indtilvidre lykkes at omsætte løsningsforslagene til
+konkrete implementeringer, der alle i teorien burde overholde de ønskede tidskompleksiteter,
+men dette skal vise sig i benchmarksne i de kommende afsnit.
+Som nævnt er der anvendt idiomer og features fra C++ og Python. En samlet liste over idiomer og features ses herunder på
+tabel [[idioms]]:
+
+#+CAPTION: Lister over anvendte idiomer og features fra C++ og Python. Bemærk, at dette kun er en oversigt, og at C++ og Python hver har deres egne idiomer og features, der ikke har noget med hinanden at gøre. \\
+#+NAME: idioms
+| C++                                   | Python                                 |
+|---------------------------------------+----------------------------------------|
+| Rule of Five                          | Yield instead of return                |
+| Smart Pointer (using ~std::unique_ptr~) | Generator Expressions                  |
+| Copy Ellision                         | Use ~in~ where possible                  |
+| RAII                                  | Ask forgiveness rather than permission |
+| Move Constructor                      | Use ~' '.join()~ to build strings        |
+| Interface Class (using concepts)      | Destructed assignment                  |
+| Lambdas                               | List comprehensions                    |
+| Variadic Templates                    | Slices                                 |
+| Constexpr                             | Dictionaries                           |
+| auto                                  |                                        |
+
+
+* Footnotes
+
+[fn:1] Extending and Embedding the Python Interpreter: https://docs.python.org/3/extending/index.html 

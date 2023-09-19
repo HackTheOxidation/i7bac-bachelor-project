@@ -1,0 +1,15 @@
+#!/usr/bin/python3
+# Removes all .pdf and .tex files.
+
+from itertools import chain
+from pathlib import Path
+
+
+if __name__ == '__main__':
+    cwd = Path('.')
+    files = chain(cwd.glob('*.pdf'), cwd.glob('*.tex'))
+
+    for f in files:
+        print(f"Deleting: '{f}'")
+        f.unlink()
+

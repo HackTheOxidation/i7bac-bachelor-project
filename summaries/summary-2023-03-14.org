@@ -1,0 +1,26 @@
+#+TITLE: Referat for Vejledermøde 7 d. 2023-03-14
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-03-20
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 14. Marts 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Dette møde drejede sig om revideret udgave af beviset for CPR-numre som regulært sprog.
+Her blev der istedet opstillet en formel beskrivelse af CPR-numre, modsat den officielle
+som er uformel, og derefter lavet et bevis for at CPR-numre beskrevet som et formelt sprog
+er et regulært sprog.
+
+Hovedpunktet for den kommende uge er teoretisk-datalogiske modellering og analyse af Navnereglen
+for at opnaa en asymptotisk øvre grænse for den bagvedliggende algoritme, ligsom der blev
+gjort for CPR-reglen.

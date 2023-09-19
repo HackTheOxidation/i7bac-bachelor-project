@@ -1,0 +1,8 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Fremtidigt arbejde
+
+Hvad fremtidigt arbejde angår, så mangler det nye regelsystem at bliver integreret med det eksisterende
+OS2datascanner system og blive sat i produktion, hvor det skal møde virkeligheden. Derudover, vil der
+blive afholdt en præsentation for OS2datascanner teamet og resten af Magenta ApS om projektet og
+dets resultater.

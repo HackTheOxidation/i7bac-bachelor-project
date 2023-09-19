@@ -1,0 +1,26 @@
+#+TITLE: Referat for Vejledermøde 6 d. 2023-03-07
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-03-13
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 7. Marts 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Dette møde drejede sig om revideret benchmarks af en ny implementering af CPR-reglen i C++ med bindinger
+til Python gennem CPython's C-API. Benchmarksne viste en 5-gange hastighedforbedring ift. den gamle
+implementering. Ydermere blev udkastet til beviset for CPR-numre som formelt sprog fremlagt.
+Dette skal dog revideres en del.
+
+Den teoretisk-datalogiske modellering og analyse af de algoritmer, som ligger bag de nuvaerende implementationer af
+systemreglerne i OS2datascanner skrider stille og roligt frem. Derudover arbejdes der med dokumentation
+af den nye CPR algoritme.

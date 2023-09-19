@@ -1,0 +1,178 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Indledning
+
+Med en stigende grad af digitaliseringen i samfundet, stiger risikoen for udslip af fortrolige oplysninger,
+når virksomheder og offentlige institutioner behandler personfølsomme data.
+Med indførelsen af GDPR i EU-lande, er det blevet vigtigt, at virksomheder og offentlige institutioner gør
+deres ypperste for at beskytte sensitive data, dels for at værne om borgerne data og dels for at undgå
+store bøder, som overtrædelser af GDPR kan medføre. En ting er personfølsomme data,
+et andet relevant scenarie er, at virksomheder kan have følsomme forretningsoplysninger,
+som ikke skal blive offentligt tilgængelige. Forudsætningen for dette er bl.a.,
+at organisationerne har de rette værktøjer til jobbet. \\
+
+OS2datascanner er et værktøj, der er skabt til at kunne finde følsomme oplysninger i store data.
+Det er en open source GDPR-Compliance Scanner, der er udviklet af firmaet Magenta ApS.
+OS2datascanner er designet til kunne gennemsøge tekstuelle data fra mange forskellige kilder og formater.
+Eksempler på datakilder kunne være websider, fildrev og senest også Microsoft OneDrive, Outlook Mail og
+Calendar. Skanbare formater inkluderer .html, .docx, .pdf, samt forekomster af tekst i billedfiler vha.
+Optical Character Recognition (OCR) teknologi. Det unikke ved OS2datascanner i denne sammenhæng er, at
+der på intet tidspunkt bliver gemt noget af det skannede data på et drev, en database eller lignende.
+Al behandling af data foregår i systemets hukommelse (RAM) for at undgå, at systemet efterlader kopier
+af potentielt følsomme data. Med dette system kan man som bruger opbygge forskellige "regler",
+som systemet kan bruge til at lede efter forekomster af "følsomme" oplysninger i brugerspecificerede datakilder.
+Mere information om OS2datascanner's skannermotor kan findes i den tekniske dokumentation for systemet[fn:1]. \\
+
+"Out-of-box" er der indbygget nogle basale regler (kaldet "systemregler"). En af dem er "CPR-reglen".
+Som navnet antyder er denne regel lavet til at kunne detektere forekomster af danske CPR/personnumre,
+som er yderst personfølsomt. En anden af de basale regler er "ordlistereglen", hvor en bruger kan
+give systemet en samling af ord som den skal lede i datakilderne efter. Der findes også regler,
+som gør det mulig at kombinere regler med logiske operationer, såsom /And/ og /Or/.
+Endeligt, så kan man opbygge sine egne regler vha. regulære udtryk, som er en meget udbredt
+og velstuderet teknologi inden for software og datalogi. Systemreglerne er som følger:
+
+- CPR-reglen: Finder cpr/personnumre.
+- Navne-reglen: Finder anerkendte danske (for- og efter-) navne.
+- Adresse-reglen: Finder registrede danske vejnavne med tilknyttet husnummer.
+- Ordliste-reglen: Finder forekomster af brugerdefinerede stopord.
+- Regex-reglen: Finder forekomster ud fra et brugerdefineret regulært udtryk.
+- /And/-reglen: Kombinere to eller flere regler og rapporterer forekomster, hvis alle reglerne matcher.
+- /Or/-reglen: Kombinere to eller flere regler og rapporterer forekomster, hvis en af reglerne matcher. 
+
+CPR-, Navne-, Adresse- og Ordliste-reglerne har dog et fælles problem, som har direkte indfyldelse for
+brugeroplevelsen af OS2datascanner: performance og præcision. Performance drejer sig om tids- og hukommelsesforbrug.
+Fra et brugerperspektiv er det tidsforbruget som kan ses direkte. OS2datascanner er hverken et realtids-
+eller et tidskritisk system, men det giver værdi for kunderne, at kunne skanne mere data på kortere tid,
+så man som dataansvarlig (Data Protection Officer, DPO) i en organisation kan gennemsøge data oftere for
+at minimere risikoen for lækkage af fortrolige oplysninger. \\
+Præcision henviser til, hvor stor en andel af
+forekomsterne (kaldet "matches") af "følsomme" oplysninger i en datakilde som en regel vil finde.
+Hvis systemet ikke finder alle matches, opfylder det naturligvis ikke sit mål.
+Hvis systemet for en given regel rapporterer matches for noget, som reglen ikke burde finde,
+altså falske positiver, ville det forringe brugeroplevelsen, da man vil pålægge brugerne en ekstra arbejdsbyrde
+i at sortere de falske matches fra.
+Disse to egenskaber for systemet er en prioritetssag, da de ydermere er vigtige konkurrenceparametre
+ifølge udvikler-teamet bag OS2datascanner.
+
+* Problemformulering
+
+Så dette projekt går ud på, at udvikle hurtigere og mere effektive udgaver af de tre nævnte regler i
+OS2datascanner. Problemet her er, at det ikke uden videre er muligt at opstille en kravspecifikation, da
+
+1) Der findes ikke nogen systematiske benchmarks for performance og præcision af de gamle udgaver af reglerne,
+   så der er ikke et klart sammenligningsgrundlag.
+2) Det er uvist om algoritmerne bag de gamle udgaver af reglerne er effektive fra et teoretisk synspunkt,
+   eller om der er mulighed for optimeringer vha. datalogisk modellering og formelle metoder.
+
+Derfor er det i dette projekt nødvendigt først og fremmest at foretage en dybtgående analyse af det gamle
+regelsystem ift. performance og præcision og derefter undersøge potentielle algoritmiske forbedringer før,
+at der kan opbygges en kravspecifikation for en ny og forbedret udgave af reglsystem, og dernæst gennemfører
+et udviklingsforløb med fokus på implementering.
+
+Udover 1) og 2), så bygger analysen på fem overordenede spørgsmål, en for hver af de nævnte regler:
+
+- Hvad er en effektiv metode til at detektere CPR-numre i tekstuelle data ift. tid og hukommelse,
+  og findes der en algoritmerne, der er mere effektiv end den gamle udgave af OS2datascanner's CPR-regl?
+- Givet en samling af officielt anerkendte navne i Danmark, hvad er effektiv strategi for OS2datascanner's
+  brugsscenarier til at gennemsøge tekstuelle data for forekomster heraf?
+- Givet en samling af alle vejnavne i Danmark, hvad er effektiv strategi for OS2datascanner's brugsscenarier
+  til at gennemsøge tekstuelle data for forekomster heraf?
+- Givet en brugerdefineret samling af ord, hvad en effektiv strategi for OS2datascanner's brugsscenarier
+  til at gennemsøge tekstuelle data for forekomster heraf?
+- Hvordan ser en effektiv implementering af regulære udtryk ud,
+  hvis den skal passe til OS2datascanner's brugsscenarier?
+
+* Målsætning
+
+Da dette ikke er et klassisk udviklingsprojekt, så giver det mening at have en kravspecifikation som sådan.
+De funktionelle krav til det nye reglsystem er præcis det samme som for det gamle system. Det bliver der
+ikke ændret på. Tilgengæld, så er de ikke-funktionelle krav anderledes, da der vil blive lagt vægt på
+performance metrikker, såsom hastighed og hukommelsesforbrug. \\
+Så målsætningen for projektet er at designe og implementere nye funktionelt-ekvivalente udgaver af nogle
+af de eksisterende regler i OS2datascanner, men med følgende ikke-funktionelle krav:
+
+- De nye regler skal være mindst lige så hurtige som de gamle regler.
+
+* Afgrænsning
+
+Dette afsnit omhandler afgrænsning af projektet. Eftersom dette projekt er timeboxed og tilmed et enmandsværk,
+så er der ikke tid og resourcer til at undersøge alle områderne om problemformuleringen dækker over,
+da den omfavner mange emner. Derfor er der blevet valgt at arbejde med følgende regler og tilhørende
+problemstillinger:
+
+- CPR-reglen
+- Navne-reglen
+- Adresse-reglen
+- Ordliste-reglen
+
+Disse er blevet udvalgt i samarbejde med OS2datascanner-teamet ud fra, hvad de oplever, at deres kunder anvender
+mest. De resterende regler er blevet valgt fra, enten fordi at:
+
+1. Der er ikke særlig stor efterspørgsel.
+2. Det er svært at danne et retvisende brugsscenarie, som er testbart.
+3. Reglens performance afhænger af andre regler.
+
+Dette er tilfældet for bl.a. Regex-reglen, samt kombinationsreglerne /And/-reglen og /Or/-reglen.
+
+* Metode og Proces
+
+Som nævnt er dette projekt anderledes, da der ikke er tale om et klassisk udviklingsprojekt. Der vil istedet
+blive lagt vægt på det analytiske arbejde, som skal angive en retning og drive en udviklingsproces. Derfor
+er der brug for en ny udviklingsmetode som er udviklet specifikt til dette bachelorprojekt. \\
+
+De overordnede spørgsmål i problemformuleringen er centeret omkring hver af systemets regler, så det bør
+afspejles i processen. Altså, for hver regel er der et til flere gennemløb af nogle faser:
+
+- Analyse-fasen
+- Forsknings-fasen
+- Løsningsudviklings-fasen
+- Implementerings-fasen
+- Test-fasen
+
+Disse faser itereres der over gennem hele projektperioden. Forløbet er illustreret på figur [[Figur 1]].
+#+CAPTION: Illustration af den iterative, analyse-drevne udviklingsproces.
+#+NAME: Figur 1
+#+ATTR_LATEX: :width 7cm :height 7cm
+[[./artifacts/development_process.png]]
+
+De nævnte faser vil blive beskrevet kort herunder. Yderligere detaljer som disse faser og udviklingsmetoden
+kan findes i det vedlagte bilag 1: /Procesrapport/.
+
+** Analyse-fasen
+
+I analyse-fasen undersøges følgende egenskaber ved en regel: Hvad er den bagvedlæggende problemstilling?
+Hvordan virker den gamle implementering? Hvad er denne implementerings performancemetrikker, både set fra
+et teoretisk synspunkt, men også ved måling på en reel platform? Dette indebærer både anvendelse af
+datalogisk modellering og måling vha. benchmarking, efter at systemet er blevet reverse engineered om
+nødvendigt, hvis der ikke eksisterer dokumentation i forvejen.
+
+** Forsknings-fasen
+
+Når den bagvedlæggende problemstilling for en regel er kendt, så skal der for det første undersøges, om der er tale
+om et kendt problem med en kendt løsning. I tilfældet, at der er en kendt løsning, skal denne naturligvis vurderes
+ud fra de samme kriterier som i analyse-fasen. Hvis egenskaberne for den kendte løsning er favorable kan man forsætte
+til Implementeringens-fasen. Hvis ikke, skal der udvikles en ny løsning.
+
+** Løsningsudviklings-fasen
+
+Her anvendes der forskellige metoder og strategier til at finde en løsning til den relevante problemstilling
+for den enkelte regel. Der drages nytte af den viden om problemet, som der er opnået under Forsknings-fasen,
+og et løsningsforslag vil blive analyseret for tidskompleksitet, der holdes op imod den for den tilsvarende regel
+i det gamle system.
+
+** Implementerings-fasen
+
+Hvis en passende løsning er fundet, skal der denne implementeres hensigtsmæssigt, således at den følger løsningen
+og er virker korrekt, men også, at man samtidigt formår at udnytte de idiomer og finurligheder der er ved
+implementeringssproget. Sagt på en anden måde: hvordan omsættes løsningsforslaget til en konkret implementation
+som har den ønskede tidskompleksitet.
+
+** Test-fasen
+
+I denne fase skal implementeringen stå sin prøve ved de samme benchmarks som blev kørt for den tilsvarende regel
+fra det gamle system i Analyse-fasen. Resultaterne fra de nye benchmarks bliver sammenlignet med benchmarks
+for det gamle system, samt holdt op imod de relevante teoretiske modeller, som er blevet udforsket.
+
+* Footnotes
+
+[fn:1] Den officielle tekniske dokumentation for OS2datascanner: [[https://os2datascanner.readthedocs.io/architecture/pipeline/]] 

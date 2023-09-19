@@ -1,0 +1,21 @@
+#+TITLE: Referat for Vejledermøde 10 d. 2023-04-11
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-04-16
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 11. April 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Hovedpunktet for dette vejledermøde var at danne et overblik over de
+artefakter som skal afleveres, samt diskutere indholdet og layout af hovedrapporten,
+da processen for dette projekt er noget anderledes end et klassisk udviklingsprojekt.

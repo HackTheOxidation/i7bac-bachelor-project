@@ -1,0 +1,30 @@
+#+TITLE: Agenda - Vejledermøde 10
+#+AUTHOR: Tomas Hagenau Andersen - 201906721
+#+DATE: 2023-04-11
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 11. April 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Punkter
+
+1. Velkommen.
+2. Gennemgang af referat fra forrige møde.
+3. Status for projektet.
+4. Opdatering af analyse-bilag med introduktion og diagrammer.
+5. Revideret benchmarks med ny løsning af Navneregl og Adresseregl, osv.
+6. Review med anden gruppe.
+7. Udkast til layout for hovedrapporten.
+8. Overblik over artefakter, som skal afleveres.
+9. Planlægning af aktiviteter for den kommende uge.
+10. Fastlæggelse af næste møde.
+11. Eventuelt.
+12. Afrunding.

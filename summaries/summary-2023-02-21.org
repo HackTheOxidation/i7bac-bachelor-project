@@ -1,0 +1,25 @@
+#+TITLE: Referat for Vejledermøde 4 d. 2023-02-21
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-02-27
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 21. Februar 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Dette møde drejede sig hovedsagligt om de midlertidige udkast til teoretisk datalogisk
+modellering og analyse af de algoritmer, som ligger bag de nuvaerende implementationer af
+systemreglerne i OS2datascanner, der var lavet indtilvidere. Der var fokus paa implementationernes
+anvendelse af RegEx, samt den generelle strategi for at finde CPR-numre.
+
+Der blev ydermere vendt tekniske emner, som eks. valg af graenseflade mellem Python og C/C++
+(C-API, ctypes, cppyy osv.), valg af Python interpreter implementering (CPython, PyPy osv.).

@@ -1,0 +1,193 @@
+* CPR-numbers as a formal, regular language: A Proof
+
+In Denmark, every legal resident who is registered in a "dansk folkeregister" has
+been issued a CPR-number (or sometimes called a "personnummer") by "Det Centrale
+Personregister" (CPR). This gives the person access to many public services and
+is considered to be very sensitive information.
+
+** The format of a CPR-number
+
+A CPR-number consists of ten digits and can be divided into two primary components.
+The first six digits describe the birth date of a person in the format: DDMMYY.
+The last four digits are so-called "control digits" (in danish: "kontrolcifre").
+The seventh digit indicate the century in which a person is born when combined with
+the fifth and sixth digits. 
+
+The official and complete description of the CPR-number system has been published by
+[[https://cpr.dk/cpr-systemet/opbygning-af-cpr-nummeret][CPR Administrationen]].
+
+** Finite Automata, Regular Expressions and Regular Languages
+
+The point of this paper is not to serve as a complete introduction to finite automata,
+regular expressions or other topics that are part of theory of computation. For that,
+we recommend "Introduction to the Theory of Computation" - Third Edition by M. Sipser.
+However, we will briefly mention some properties of finite automata, regular expressions
+and regular languages along with their connections to improve the readability of the proof
+for the uninitiated.
+
+
+** Definition of a CPR-number as a formal language
+
+Going forward, we need to have a mathematical description of what a CPR-number is such
+that we can reason about it. Such a definition is not provided by "CPR Administrationen",
+though. \\
+After having examined the official documentation, we define the set of all valid CPR-numbers
+as a formal language. This is something that is necessary to be able to work with CPR-numbers
+in a rigorous and meaningful way. Though, it has to be said that, it is impossible to prove
+that our definition of CPR-numbers is equivalent to the official definition issued by "CPR
+Administrationen", because they are different types of specifications, one being formal and the
+other being informal. Formal means that a specification is defined mathematically. \\
+Note that a formal language is described using an alphabet of symbols and language operations.
+Language operations include Union ($\cup$), Intersection ($\cap$) and Difference ($\setminus$),
+all known from Set Theory, but also Concatenation ($\cdot$) and Kleene * (star). \\
+Also note that in the following definition, the alphabet used consists of digits 0 though 9.
+This means that some confusion may arise, because of different operator semantics.
+For example, $0a$ DOES NOT mean 0 multiplied by $a$, it means 0 concatenated with ("followed by") $a$. \\
+
+For the sake of simplicity, we consider the alphabet of digits, $\Sigma = \{0,1,2,3,4,5,6,7,8,9\}$.
+
+Let $C$ be the language of all valid CPR-numbers such that
+\begin{align*}
+C &= (\{dmyk : d \in D, m \in M, y \in Y, k \in K\} \setminus I) \cup L 
+\end{align*}
+
+where $I$, $L$, $D$, $M$, $Y$ and $K$ are finite languages defined as:
+\begin{align*}
+I &= \{dyk : d \in \{3102,3002,2902,3104,3106,3109,3111\}, y \in Y, k \in K\} \\
+L &= \{2902yk : y \in Y_{4}, k \in K \} \cup \{290200abbb : a \in \{4,5,6,7,8,9\}, b \in \Delta \} \\
+D &= \{\{0a : a \in \Delta_{+} \}\cup\{1a|2a : a \in \Delta\}\cup\{30,31\}\} \\
+M &= \{\{0a : a \in \Delta_{+} \}\cup\{10,11,12\}\} \\
+Y &= \{ab : a,b \in \Delta\} \\
+Y_{4} &= \{04, 08, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80, 84, 88, 92, 96\} \\
+K &= \{aaaa : a \in \Delta\} \setminus \{0000\} \\
+\Delta &= \Sigma \\
+\Delta_{+} &= \Delta \setminus \{0\}
+\end{align*}
+
+Note that $I$, $L$, $D$, $M$, $Y$ and $K$ are finite because they can be constructed from the
+finite languages $\Delta$ (and $\Delta_{+}$) without using the Kleene * (star) operator,
+since it always produces an infinite language. \\
+
+This also aligns with the informal specification in the sense that there is a countable, finite
+number of valid CPR-numbers. If one were to make an estimation, the total number of valid CPR-numbers
+is approximately:
+
+\begin{equation}
+365 \cdot 100 \cdot 9999 + 149 = 364963649
+\end{equation}
+
+Intuitively, this is the number of days in a year, 365, times the number of years that can
+be represented using two digits (years '00' to '99'), 100, times the number of valid "control digits"
+('0001' to '9999'), 9999, plus the number of leap years in the period 1858 to 2057 which is 149.
+
+** The Proof 
+
+Here we provide a proof about the language of all valid CPR-numbers for the theorem which states:
+
+\begin{theorem}
+Let $C$ be the language of all valid CPR-numbers, then $C$ is regular.
+\end{theorem}
+
+\begin{proof}
+From the definition of regular languages, we know that when a language can be defined from
+other finite languages using the operators $\cup$, $\cap$, $\setminus$, $\cdot$ and $*$.
+
+Since $C$ is defined using $\cup$ and $\setminus$ from the finite, regular languages $I$, $L$, $D$, $M$,
+$Y$, $Y_{4}$ and $K$, which in turn are all defined using $\cup$, $\cdot$ and $\setminus$ from $\Delta$,
+all of which have closure properties. Closure is the property of an operator that when it is applied to
+operands which are regular languages, the result is also a regular language.
+Thus, this means that $C$ is regular by construction due to the closure properties of regular languages. 
+\end{proof}
+
+** Caveats
+
+In the proof given in the previous section, there is one attribute about CPR-numbers that was not
+accounted for: The Modulus 11 rule. There is a reason for this: in the [[https://cpr.dk/cpr-systemet/personnumre-uden-kontrolciffer-modulus-11-kontrol][official documentation]],
+"CPR Administrationen" states in Danish: "CPR-kontoret skal derfor understrege, at alle it-systemer
+bør indrettes således, at personnumre uden modulus 11 kan håndteres.". Roughly translated, they encourage
+that systems can handle cases with CPR-numbers that do not fulfill the Modulus 11 rule.
+
+Therefore, constructing the GNFA such that it recognizes CPR-numbers that do not fulfill the Modulus 11 rule
+aligns with the guidelines issued by the authorities.
+
+** Implications
+
+Having proved that the language of CPR-numbers, $C$, is regular, this means that $C$ has all the properties
+of regular languages. As for time and space complexities, every regular language is a linear language,
+meaning that it has time complexity $TIME(t(n))$ with $t(n) = \mathcal{O}(n)$ and a finite automaton,
+has space complexity $DSPACE(\mathcal{O}(1))$.
+
+There are some other implications that we will showcase below. We won't go into details about proving
+
+For every regular language, there exists at least one Deteministic Finite Automaton (DFA)
+which recognizes it. DFA's are equivalent to Generalized Non-deterministic Finite Automata (GNFA).
+
+Proving that the language of CPR-numbers, $C$, is regular could also thus be accomplished by constructing
+a GNFA (or an equivalent DFA), $M = (Q,\Sigma,\delta,q_{0},F)$. This is done by a so-called "Proof by Construction".
+On figure [[Figur 6]] is an attempt at constructing an approximated example of a 32-state GNFA:
+
+#+CAPTION: Example of what an approximate DFA for recognizing CPR number could look like.
+#+NAME: Figur 6
+[[./cpr_finite_automaton.png]]
+
+This machine, $M$, is a 5-tuple and it has the formal definition:
+
+\begin{align*}
+Q &= \{q_{1}, \ldots, q_{31}, S\} \\
+\Sigma &= \{0,1,2,3,4,5,6,7,8,9\} \\
+q_{0} &= q_{1} \\
+F &= \{S\} \\
+\delta &: Q \times \Sigma \rightarrow Q &
+\end{align*}
+
+$Q$ is the set of states. $\Sigma$ is the alphabet of symbols (for the sake of simplicity
+we only consider the alphabet of digits). $q_{0}$ is the start state. $F$ is the set of
+accept states. $\delta$ is the transistion function that takes a state and a symbol as its
+parameters and returns a new state. We omit the definition of $\delta$ for this example. \\
+
+How could one then show that the GNFA above is equivalent to $C$? Kleene's algorithm
+provides a way to convert a NFA to a regular expression. However, because there may
+be many finite automata with a different number of states that all recognize the same
+language, there could be other GNFAs than the one we have presented above. It is out
+of scope for this paper, since the goal was only to prove that the language of CPR-numbers
+is regular. \\
+
+One could also attempt to express the language of CPR-numbers using a (right-linear) regular grammar:
+
+\begin{align*}
+A &\rightarrow 3B|2C|1D|0E \\
+B &\rightarrow 1F|0G \\
+C &\rightarrow 9H|0I|1I|2I|3I|4I|5I|6I|7I|8I \\
+D &\rightarrow 0I|E \\
+E &\rightarrow 1I|2I|3I|4I|5I|6I|7I|8I|9I \\
+F &\rightarrow 0K|1L \\
+G &\rightarrow 0M|1N \\
+H &\rightarrow 0O|1Q \\
+I &\rightarrow 0R|1Q \\
+K &\rightarrow 1Q|3Q|5Q|7Q|8Q \\
+L &\rightarrow 0Q|2Q \\
+M &\rightarrow K|4Q|6Q|9Q \\
+N &\rightarrow L|1Q \\
+O &\rightarrow 2S|M \\
+Q &\rightarrow 0P|1P|2P|3P|4P|5P|6P|7P|8P|9P \\
+P &\rightarrow 0T|1T|2T|3T|4T|5T|6T|7T|8T|9T \\
+S &\rightarrow 0R|2U|4U|6U|8U|1V|3V|5V|7V|9V \\
+R &\rightarrow 04X|05X|06X|07X|08X|09X \\
+U &\rightarrow 0T|4T|8T \\
+V &\rightarrow 2T|6T \\
+T &\rightarrow 0X|1X|2X|3X|4X|5X|6X|7X|8X|9X \\
+X &\rightarrow 0Y|1Y|2Y|3Y|4Y|5Y|6Y|7Y|8Y|9Y \\
+Y &\rightarrow 0W|1Z|2Z|3Z|4Z|5Z|6Z|7Z|8Z|9Z \\
+W &\rightarrow 1|2|3|4|5|6|7|8|9 \\
+Z &\rightarrow 0|W
+\end{align*}
+
+Again, we merely provide some examples of how one could otherwise express the language of CPR-numbers,
+but we will not prove these.
+
+** Conclusion
+
+In this paper, we have presented a proof that the language of all valid CPR-numbers
+is a regular language, which means that it is possible to construct an algorithm that
+recognizes all valid CPR-numbers that runs in linear time and only consumes a constant
+amount of memory.

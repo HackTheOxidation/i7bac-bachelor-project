@@ -1,0 +1,26 @@
+#+TITLE: Referat for Vejledermøde 1 d. 2023-01-31
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-02-03
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 31. Januar 2023
+- Tid: kl. 9:00
+- Sted: Carstens kontor eller online (Zoom/Jitsi?)
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Dette møde blev indledningen for bachelorprojektet, hvor projektet og dets omfang blev præsenteret for vejleder.
+Status for projektet er hidtil, at det befinder sig i den tidligste fase.
+
+Herefter præsenterede vejleder kort sin arbejdesmetode og role i projektet, og projektet som helhed blev diskuteret.
+En potentiel udfordring, grundet projektets brede fagområde, er, at projektet ikke må "stikke af".
+
+Det første mål, der arbejdes frem imod, er at skabe en klar, veldefineret og afgrænset problemformulering,
+således at projektets formål er på plads. Dette er den primære arbejdsopgave for den kommende uge.

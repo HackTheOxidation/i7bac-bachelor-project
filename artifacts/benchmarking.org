@@ -1,0 +1,208 @@
+* Benchmarking goals
+
+While a complexity analysis gives a measure of how the number of operations required to complete
+an algorithm scales with input size, it doesn't say anything about time as this is highly dependent
+on:
+
+1) The hardware platform
+2) Implementation language
+3) The ability of the implementation language runtime to efficiently execute the algorithm
+   (whatever the execution strategy is, i.e. Interpretation, Compilation, etc.).
+
+* Benchmark setup
+
+Each configuration of a system rule has to search through a 2.2MB HTML file from Wikipedia
+containing a list of victims of the September 11th attacks, which is copied between
+300-1000 times depending on the rule.
+
+To perform the tests and measure running times the /pytest/ and /pytest-benchmark/ frameworks
+have been selected, since the current OS2datascanner's test suite already uses /pytest/ to
+begin with.
+
+/pytest/ runs each benchmark a number of times called 'Rounds' and measures metrics such as
+minimum, maximum and average running times among other things.
+
+These measurements where collected on a system with the following (relevant) specifications:
+
+** Hardware:
+
+- CPU: AMD Ryzen 5 3600
+- GPU: AMD ATI Radeon RX 6700 XT
+- RAM: 16GB
+
+** Software:
+
+- Operating System: Fedora Linux 37 x86_64, Kernel version: 6.2.9-200.fc37
+- C++ Compiler: g++ (GCC) 12.2.1
+- Python: CPython v3.9.7 (container, used in current system)
+  and v3.11.2 (host, used in new system)
+
+** Data sets
+
+There are two data set that have been used for this benchmark. One of them
+is the raw .html-file of the Wikipedia page on 'List of victims of the September 11 attacks',
+and the other is the extracted text from the .pdf-file of the 'GCC 12.2 Manual'. \\
+
+The Wikipedia .html-file is approx. 2.2MB in size and the extracted .txt is approx. 2.7MB in size.
+Upon initial testing, the sizes of these files by themselves proved to be too small, as the benchmarks
+produced results in the millisecond range with high variation. In an attempt to eliminate this issue 
+and possibly reduce the standard deviation, the data sets have been scaled up by copying them 300 times.
+In addition, the Wikipedia article has been injected with a fake, but valid CPR-number for testing
+purposes.
+
+* Benchmarking Results
+
+** /CPR Rule/
+
+*** Current Implemenation
+
+The current implementation of the /CPRRule/ has been run with every possible combination
+of options using the benchmark setup. 
+This yielded the following results summarized in a table:
+
+| data set | /ignore_irrelevant/ | /check_mod11/ | /examine_context/ | Mean time (s) | Rounds |
+|----------+-------------------+-------------+-----------------+---------------+--------|
+| wiki     | Disabled          | Disabled    | Disabled        |       17.4567 |      5 |
+| wiki     | Enabled           | Disabled    | Disabled        |       17.3978 |      5 |
+| wiki     | Disabled          | Enabled     | Disabled        |       17.4082 |      5 |
+| wiki     | Enabled           | Enabled     | Disabled        |       17.4031 |      5 |
+| wiki     | Disabled          | Disabled    | Enabled         |       33.2116 |      5 |
+| wiki     | Enabled           | Disabled    | Enabled         |       33.2534 |      5 |
+| wiki     | Disabled          | Enabled     | Enabled         |       33.0945 |      5 |
+| wiki     | Enabled           | Enabled     | Enabled         |       33.0134 |      5 |
+| gcc      | Disabled          | Disabled    | Disabled        |       19.3008 |      5 |
+| gcc      | Enabled           | Disabled    | Disabled        |       19.2081 |      5 |
+| gcc      | Disabled          | Enabled     | Disabled        |       19.2106 |      5 |
+| gcc      | Enabled           | Enabled     | Disabled        |       19.3008 |      5 |
+| gcc      | Disabled          | Disabled    | Enabled         |       39.0410 |      5 |
+| gcc      | Enabled           | Disabled    | Enabled         |       38.9838 |      5 |
+| gcc      | Disabled          | Enabled     | Enabled         |       39.1035 |      5 |
+| gcc      | Enabled           | Enabled     | Enabled         |       38.7461 |      5 |
+
+As seen in the table above, the difference between having /check_mod11/ enabled or not is negligible.
+In all of the cases where /examine_context/ was enabled, the benchmark failed with an error due
+to overconsumption of memory.
+
+*** New Implemenation
+
+The new rule doesn't have an /ignore_irrelevant/ option (as it
+strictly searches for CPR-numbers), and thus this cannot be tested.
+The tests yielded the following results:
+
+| data set | /check_mod11/ | /examine_context/ | Mean time (s) | Rounds |
+|----------+-------------+-----------------+---------------+--------|
+| wiki     | Disabled    | Disabled        |        1.9235 |      5 |
+| wiki     | Enabled     | Disabled        |        1.9323 |      5 |
+| wiki     | Disabled    | Enabled         |        4.4361 |      5 |
+| gcc      | Disabled    | Disabled        |        3.9440 |      5 |
+| gcc      | Enabled     | Disabled        |        3.9751 |      5 |
+| gcc      | Disabled    | Enabled         |       11.0931 |      5 |
+
+*** Summary
+
+To briefly summarize, the new implemenation is approximately 10 times faster than the equivalently
+configured rule in the current system.
+
+** Name Rule
+
+*** Current Implemenation
+
+The current implementation of the /NameRule/ has been tested using the benchmark
+setup both with and without the /expansive/-option enabled.
+This yielded the following results summarized in a table:
+
+| data set | /expansive/ | Mean time (s) | Rounds |
+|----------+-----------+---------------+--------|
+| wiki     | Disabled  | 111.1803      |      5 |
+| wiki     | Enabled   | TIMEOUT       |      5 |
+| gcc      | Disabled  | 34.5217       |      5 |
+| gcc      | Enabled   | TIMEOUT       |      5 |
+
+The measurement with the /expansive/-option enabled ran for more than 5+ hours,
+so it is fair to assume that the underlying algorithm has an intractable
+complexity.
+
+*** New Implemenation
+
+The new implementation does not have the same /expansive/-option as the current one.
+This yielded the following results summarized in a table:
+
+| data set | /expansive/ | Mean time (s) | Rounds |
+|----------+-----------+---------------+--------|
+| wiki     | Disabled  | 6.8151        |      5 |
+| wiki     | Enabled   | N/A           |      5 |
+| gcc      | Disabled  | 5.4869        |      5 |
+| gcc      | Enabled   | N/A           |      5 |
+
+*** Summary
+
+The new implemenation is approximately 16 and 6 times faster than the rule in the current system
+with the /expansive/-option disabled for the wiki and gcc data sets, respectively.
+
+** Address Rule
+
+*** Current Implemenation
+
+The current implementation of the /AddressRule/ has been tested using the benchmark
+setup.
+This yielded the following results summarized in a table:
+
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |       57.0632 |      5 |
+| gcc      |       68.3224 |      5 |
+
+*** New Implemenation
+
+This yielded the following results summarized in a table:
+
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |        1.9814 |      5 |
+| gcc      |        2.3113 |      5 |
+
+*** Summary
+
+Comparing the two, the new implemenation is approximately 29 times faster than the current
+version for both the wiki and gcc data sets.
+
+** Ordered Wordlist Rule
+
+The current implementation of the /HealthRule,/ which is a custom rule based on the /OrderedWordlistRule,/ 
+has been tested using the benchmark setup. This yielded the following results summarized in a table:
+
+*** Current Implemenation
+
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     | TIMEOUT       |      5 |
+| gcc      | TIMEOUT       |      5 |
+
+*** New Implemenation
+
+There are two implementations in the new system to handle different cases of the same problem.
+/OrderedWordlistRule/ solves the same case for nested wordlists as the old rule, where /WordListRule/
+solve the case for a single, flat collection of words.
+
+**** WordlistRule
+
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |        2.4171 |      5 |
+| gcc      |        4.9714 |      5 |
+
+**** OrderedWordlistRule
+
+| data set | Mean time (s) | Rounds |
+|----------+---------------+--------|
+| wiki     |       13.7363 |      5 |
+| gcc      |       42.3901 |      5 |
+
+*** Summary
+
+Since the original implementation resulted in timeouts for both datasets, we can't give
+an exact number on the performance difference, but we can say that the new rule
+is usable, at least.
+
+Also, the case with a flat wordlist has not been tested with the original implementation,
+so we can't compare the results with the new /WordListRule/.

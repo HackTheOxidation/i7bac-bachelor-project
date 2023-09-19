@@ -1,0 +1,34 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Konklusion
+
+Der kan hermed konkluderes, at der i dette projektforløb er blevet anvendt teoretiske, såvel som praktiske
+metoder, værktøjer og teknikker fra datalogien og ingeniørvidenskaben til at analysere og udvikle et
+nyt regelsystem til skannermotoren for systemet: OS2datascanner. \\
+
+Fra OS2datascanners gamle regelsystem, som er skrevet i Python, blev der prioriteret og udvalgt fire
+eksisterende regler, som er blevet analyseret, optimeret og vidreudviklet på. De fire udvalgte regler
+er CPR-reglen, Navne-reglen, Adresse-reglen og Ordliste-reglen. Hver af disse regler er blevet analyseret,
+både teoretisk vha. datalogisk modellering og eksperimenterielt vha. benchmarking, da deres egenskaber
+ikke var dokumenteret. Der er blevet udledt tidskompleksiteter for algoritmerne bag hver regel, samt målt
+hastigheder ved anvendelse på konstruerede datasæt, som dannede grundlag for løsningsforbedringer og optimeringer.
+Dvs. at ift. 1) og 2) i problemformuleringen er det blevet gjort klart, hvilke teoretiske egenskaber
+algoritmerne i det gamle system har, samt er der opnået konkrete målinger for deres respektive hastigheder. \\
+
+Dernæst er der blevet udarbejdet løsningsforslag for hver regel med samme eller lavere tidskompleksiteter.
+Disse løsningsforslag er herefter blevet omsat til konkrete implementeringer i C/C++ og Python i form af
+en CPython extension. Derefter blev implementeringerne testet ud fra samme benchmarks som de gamle regler.
+Benchmarksne viste hastighedsforbedringer for tre af de fire udvalgte regler, specifik med faktorer på henholdsvis ca. 3.5
+til 9 gange for CPR-reglen, ca. 6 til 16 gange for Navne-reglen og ca. 29 gange for Adresse-reglen. Den
+nye udgave af Ordliste-reglen blev specialiseret i to cases og begge viste sig at være forbedret, eftersom
+at de begge gennemførte benchmarken inden for en praktisk anvendelig tidsgrænse, men da den gamle udgave
+ikke gennemførte benchmarken, kan der ikke udledes et konkret tal for hastighedsforskel. 
+Dermed er der fundet svar på, hvorledes man effektivt kan finde henholdsvis CPR-numre, personnavne,
+adresser, samt brugerdefinerede samlinger af ord, i tekstuelle data, som er relevante for OS2datascanner. \\
+
+Samtidigt med dette, så blev der udviklet og anvendt en ny iterativ, forskning-baseret udviklingsproces
+med 5-faser. Denne blev lavet specifik til at passe til dette projekts undersøgende og udforskende natur.
+På trods af, at der ikke forelægger konkrete beviser for, at denne nye proces er den direkte årsag til
+de opnåede resultater, så er der ikke noget, der peger på det modsatte. Selvom der ikke forelægger direkte
+evidens for hverken positiv eller negativ påvirkning, så er det gruppens opfattelse, at denne har bidraget,
+da metoden er blevet anvendt, og at nævnte tekniske resultater er blevet opnået under denne proces.

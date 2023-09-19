@@ -1,0 +1,11 @@
+@startuml
+:Check for non-empty content;
+:Casefold the content;
+while (For each nested wordlist)
+      while (For each word in wordlist)
+      	    :Scan the content text;
+	    :Yield Match result for each found word;
+      endwhile
+endwhile
+stop
+@enduml

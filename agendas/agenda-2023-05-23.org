@@ -1,0 +1,29 @@
+#+TITLE: Agenda - Vejledermøde 15
+#+AUTHOR: Tomas Hagenau Andersen - 201906721
+#+DATE: 2023-05-23
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 23. Maj 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Punkter
+
+1. Velkommen.
+2. Gennemgang af referat fra forrige møde.
+3. Status for projektet.
+4. Hovedrapporten: Konklusion (afsnit 11).
+5. Hovedrapporten: Diskussion af procesresultater (afsnit 10.5)
+6. Hvad skal afleveres og i hvilket format.
+7. Planlægning af aktiviteter for den kommende uge.
+8. Eksamen
+9. Fastlæggelse af næste møde.
+10. Eventuelt.
+11. Afrunding.

@@ -1,0 +1,118 @@
+#+TITLE: I7BAC - Bachelorprojekt: Procesrapport
+#+SUBTITLE: Optimizing Text Processing for OS2datascanner based on Finite Automata.
+#+AUTHOR: Tomas Hagenau Andersen - Studienr.: 201906721
+#+DATE: Afleveringsdato: 2023-06-01
+#+OPTIONS: toc:nil
+#+LANGUAGE: dk
+#+LATEX_HEADER: \renewcommand{\contentsname}{Indholdsfortegnelse}
+#+LATEX_HEADER: \usepackage[danish]{babel}
+
+\newpage
+
+#+TOC: headlines 2 
+
+\newpage
+
+* Indledning
+
+Denne rapport beskriver metoder og udviklingsprocessen for bachelorprojektet 'Optimizing Text
+Processing for OS2datascanner based on Finite Automata' i kurset I7BAC for forårssemesteret
+2023 på Diplomingeniøruddannelsen i Softwareteknologi, Aarhus Universitet. Specifikt vil emner
+som Gruppedannelse, Udviklingsforløb, og Planlægning blive berørt.
+
+* Gruppedannelse
+
+Dette er et enkeltmands-projekt og af den grund indholder denne procesrapport ikke yderligere afsnit
+om samarbejdsaftale, projektledelse, arbejdsfordeling og konflikthåndtering, da disse er overflødige
+og/eller ikke kan forekomme. \\
+
+Dog er projektet udbudt og udviklet i samarbejde med firmaet Magenta ApS, som står bag OS2datascanner.
+Her er der ugentligt blevet kommunikeret med teamet, hvor fremskridt og løsningsforslag er blevet
+præsenteret, således projektet har taget en form, der er produktiv og giver mening både fra
+et akademisk og et praktisk perspektiv.
+
+* Udviklingsforløb: En undersøgende/forsknings-baseret udviklingsproces
+
+Dette projekt anvender en mere undersøgende/forsknings-baseret tilgang til udvikling af løsninger,
+end de tidligere semester-projekter har gjort. Det kræver en udviklingsproces, som er tilpasset
+et forløb, hvor analyse er i højsædet. Her er der forsøgt at opfange denne proces i fem faser,
+som der er blevet itereret igennem under projektforløbet. Forløbet er illustreret på figur [[Figur 1]].
+
+#+CAPTION: Illustration af den iterative, analyse-drevne udviklingsproces.
+#+NAME: Figur 1
+#+ATTR_LATEX: :width 7cm :height 7cm
+[[../artifacts/development_process.png]]
+
+Herunder vil de enkelte faser blive beskrevet hver for sig ift. til målene for den enkelte fase,
+anvendte metoder og tekniker, mm. Bemærk, at selvom faserne har en kronologisk rækkefølge er der
+ikke nogen faste rammer for varigheden både af den enkelte og faserne imellem.
+
+** Analyse-fasen
+
+Målet for analyse-fasen er undersøge egenskaberne ved de eksisterende delsystemer for at forstå og
+opnå indsigt i den bagvedlæggende problemstilling. Når både det eksisterende delsystem og dets
+problemstilling er forstået, er det muligt at sige noget om, hvor god en løsning delsystemet er.
+De anvendte teknikker afhænger naturligvis af selve problemet, men generelt tilgåes opgaven fra
+to forskellige perspektiver: et teoretisk perspektiv, hvor der anvendes metoder fra datalogisk
+modellering til at karakterisere problemet, samt et eksperimenterende/praktisk perspektiv,
+hvor der indsamles konkrete målinger gennem forsøg og benchmarks for hvert delsystem. \\
+
+Når denne indsigt er opnået, så kan et delsystem holdes op mod dets problemstilling, og
+spørgsmålet om hvorvidt det er muligt at finde en bedre løsning kan besvares. Desuden foretages der
+også en analyse og vurdering af anvendte teknologier for både det eksisterende, såvel som
+et potentielt delsystem.
+
+** Forsknings-fasen
+
+Hvis analysen for et delsystem har vist, at det er muligt at lave en bedre løsning for et delsystem,
+så er formålet med forsknings-fasen at undersøge og diskutere selve problemstillingen. For det
+første skal eksisterende litteratur og løsningsforslag udforskes for at se om den samme eller lignende
+problemstilling allerede er blevet løst effektivt. For det andet, så skal der overvejes om problemstillingen
+skal ændres lidt eller transformeres for nemmere at kunne finde effektiv løsning. Hvis der allerede
+findes en eksisterende løsning, så kan løsningsudviklings-fasen springes over og man kan gå
+direkte til implementerings-fasen.
+
+** Løsningsudviklings-fasen
+
+Når der ikke findes en eksisterende løsning på et problem, så er formålet med løsningsudviklings-fasen
+at finde sådan en. Dette er en mere kreativ fase, hvor at 'trial and error' er den mest anvendte
+'teknik'. Det er svært at sige præcis, hvordan en idé, for slet ikke at tale om en god idé, opstår.
+Af og til kommer de med inspiration enten fra løsninger til andre lignende problemer. Andre gange,
+så virker det tilfældigt. Men, det er ikke alt sammen gætteri, for enhver potentiel idé til en løsning
+vil blive analyseret og vurderet med de samme datalogiske modelleringsmetoder fra analyse-fasen,
+for at se om den pågældende idé er værd at forfølge. Bemærk dog, at tilgangen til denne form for
+løsningsudvikling bliver gjort ud fra et sprog-agnostisk syn, således at det i princippet er muligt
+at implementere en løsning i et hvilket som helst programmeringssprog.
+
+** Implementerings-fasen
+
+Ved begyndelsen af denne fase er både problemstilling, samt en sprog-agnostisk løsning kendt. Målet
+for denne fase er ikke kun at oversætte løsningsbeskrivelsen til konkret kode, der virker, men
+at udnytte de finurligheder og særpræg som det udvalgte implementeringssprog har. Der gøres i
+håbet om at kunne udvinde så megen hastigshedsforøgelse som muligt, eftersom at 'High Performance'
+er hovedtemaet for dette projekt. Dette forudsætter dyb kendskab til implementeringssproget, samt
+evnen til at omsætte den viden til effektiv kode.
+
+** Test-fasen
+
+I denne fase skal den nye løsningsimplementering stå sin prøve. Det skal undersøges om denne løsning
+er hurtigere end den eksisterende. Til dette anvendes det samme benchmarksystem fra analyse-fasen
+som blev brugt til at lave målinger på de eksisterende delsystemer. Her vil de vise sig,
+om den nye løsning er hurtigere, men grunden til dette vil ikke nødvendigvis være klar, hvis
+der er forskel i implementeringssprogene mellem den gamle og den nye løsning. I så fald kan
+det være uklart hvor meget en eventuelt hastigshedsforøgelse kan tilskrives en bedre algoritme
+frem for et hurtigere programmeringssprog. Hvis hastigshedsforøgelsen ikke er tilfredsstillende,
+så starter iterationen af disse faser forfra igen.
+
+* Planlægning
+
+Som nævnt i forrige afsnit, så lægger denne forsknings-baseret udviklingsproces ikke op til
+langsigtet planlægning, da der ikke er nogen som helst garanti for at finde en løsning overhovedet.
+Desuden har processen båret præg af, at der har skulle takles flere delsystemer og dermed også
+flere problemstillinger ad gangen. Disse har vist sig at have forskellige fremgange i varierende
+tempi, hvilket vil sige, at projektet har kunne befinde sig i en form for superposition af tilstandene
+for fremgangen for det enkelte delsystem. Eksempelvis har et delsystem kunne være i Forsknings-fasen,
+imens et andet kunne være i Implementerings-fasen, og så fremledes. \\
+
+Af den grund er al planlægning på mere end ugentlig, hvis ikke daglig, basis været utilregnelig,
+da ideer og løsninger har kunne opstå meget pludseligt.

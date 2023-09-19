@@ -1,0 +1,27 @@
+#+TITLE: Agenda - Vejledermøde 1
+#+AUTHOR: Tomas Hagenau Andersen - 201906721
+#+DATE: 2023-01-31
+
+* Dato, tid og sted
+
+- Dato: d. 31. Januar 2023
+- Tid: kl. 9:00
+- Sted: Carstens kontor eller online (Zoom/Jitsi?)
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Punkter
+
+1. Velkommen.
+2. (Springes over denne gang) Gennemgang af referat fra forrige møde.
+3. Status for projektet.
+4. Præsentation af projektet: setting, problem, osv.
+5. Afgrænsning: hvornår bliver det for bredt/meget?
+6. Projektets natur og dets artefakter.
+7. Planlægning af aktiviteter for den kommende uge.
+8. Fastlæggelse af næste møde.
+9. Eventuelt.
+10. Afrunding.

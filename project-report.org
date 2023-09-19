@@ -1,0 +1,71 @@
+#+TITLE: I7BAC - Bachelorprojekt: Hovedrapport
+#+SUBTITLE: Optimizing Text Processing for OS2datascanner based on Finite Automata.
+#+AUTHOR: Gruppe 3: Tomas Hagenau Andersen - Studienr.: 201906721 \and Vejleder: Carsten Eie Frigaard
+#+DATE: Aarhus Universitet - Afleveringsdato: 2023-05-31 - Antal tegn: 70918
+#+LANGUAGE: dk
+#+OPTIONS: toc:nil ^:nil
+#+LATEX_HEADER: \renewcommand{\contentsname}{Indholdsfortegnelse}
+#+LATEX_HEADER: \usepackage[danish]{babel}
+#+LATEX_HEADER: \usepackage{amssymb, amsthm, amsmath}
+#+LATEX_HEADER: \usepackage{url}
+#+LATEX_HEADER: \newtheorem{theorem}{Theorem}
+#+BIBLIOGRAPHY: bibliography.bib
+
+\newpage
+
+#+INCLUDE: "./abstract.org"
+#+INCLUDE: "./foreword.org"
+
+#+TOC: headlines 2 
+
+\newpage
+
+#+INCLUDE: "./introduction.org"
+#+INCLUDE: "./analysis.org"
+#+INCLUDE: "./solutions.org"
+#+INCLUDE: "./implementation.org"
+#+INCLUDE: "./results.org"
+#+INCLUDE: "./discussion.org"
+#+INCLUDE: "./conclusion.org"
+#+INCLUDE: "./future-work.org"
+
+* Referenceliste
+
+Her findes referencelisten for denne rapport. Her skelnes der mellem kilder,
+som er eksterne referencer, og bilag, der er interne referencer til materiale
+som gruppen selv har udviklet. Alle kilder fra internettet er besøgt senest d. 31. maj 2023.
+
+** Kilder
+
+#+print_bibliography:
+
+- Den officielle tekniske dokumentation for OS2datascanner: [[https://os2datascanner.readthedocs.io/architecture/pipeline/]] 
+- cppreference.com - Compiler support for C++20: https://en.cppreference.com/w/cpp/compiler_support/20 
+- PyO3 user guide: https://pyo3.rs/v0.18.3/ 
+- References and Borrowing - Rust documentation: https://doc.rust-lang.org/1.8.0/book/references-and-borrowing.html 
+- Rust Programming Language: https://www.rust-lang.org/ 
+- The Go Programming Language: https://go.dev/ 
+- Extending and Embedding the Python Interpreter: https://docs.python.org/3/extending/index.html 
+- Cython: https://cython.org/ 
+- PyPy: https://www.pypy.org/ 
+- Numpy kildekode - GitHub: https://github.com/numpy/numpy 
+- The Computer Language Benchmark Games 23.02 - Python3 vs C++: https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/python3-gpp.html
+- AMQP Working Group 0-9-1: https://www.amqp.org/specification/0-9-1/amqp-org-download 
+- Open Container Initiative: https://opencontainers.org/ 
+- RabbitMQ message broker: https://www.rabbitmq.com/ 
+- Docker documentation: https://docs.docker.com/ 
+- GCC online documentation - GCC 12.2 Manual: https://gcc.gnu.org/onlinedocs/gcc-12.2.0/gcc.pdf
+- django - The web framework for perfectionists with deadlines: https://www.djangoproject.com/ 
+- Personnumre uden kontrolciffer (modulus 11 kontrol): https://cpr.dk/cpr-systemet/personnumre-uden-kontrolciffer-modulus-11-kontrol 
+- pytest-benchmark officielle website: [[https://pytest-benchmark.readthedocs.io/en/latest/index.html]]
+- pytest officielle website: [[https://docs.pytest.org/en/7.2.x/contents.html]]
+- Rabin-Karp Algorithm, Multiple pattern search - Wikipedia: https://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_algorithm#Multiple_pattern_search 
+- Extending and Embedding the Python Interpreter: https://docs.python.org/3/extending/index.html 
+- Model checking - Wikipedia: https://en.wikipedia.org/wiki/Model_checking 
+- Formal Verification - Wikipedia: https://en.wikipedia.org/wiki/Formal_verification 
+
+** Bilag
+
+1. Procesrapport
+2. Teknisk dokumentation
+

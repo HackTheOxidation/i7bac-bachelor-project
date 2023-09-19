@@ -1,0 +1,105 @@
+#+BIBLIOGRAPHY: bibliography.bib
+
+* Analyse og Diskussion af resultater
+
+I dette afsnit foretages analyse og diskussion af de opnåede resultater for de nye implementeringer,
+som vil blive sammenlignet med de gamle regler både ud fra teoretiske modeller, såvel som konkrete målinger
+i form af benchmarks. Slutteligt, så perspektiveres der kort på 1) implementering generelt, 2) projektetforløbet
+som helhed, samt en diskussion af udviklingsprocessen.
+
+** CPR-reglen
+
+Den nye implementering viste sig i benchmarks at være hurtigere end den gamle, på trods af at
+begge løsninger har samme tidskompleksitet på $\mathcal{O}(n + m)$. Beregnede hastighedsfaktorer
+kan ses i tabel [[Tabel 10]]. \\
+
+#+CAPTION: Beregnede hastighedsfaktorer ud fra 'Mean Time' for CPR-regel. Da den nye regel ikke har 'ignore_irrelevant' er disse undladt.
+#+NAME: Tabel 10
+| data set | /check_mod11/ | /examine_context/ | Gammel (s) |  Ny (s) | Speedup |
+|----------+-------------+-----------------+------------+---------+---------|
+| wiki     | Disabled    | Disabled        |    17.4567 |  1.9235 |  907.5% |
+| wiki     | Enabled     | Disabled        |    17.4082 |  1.9323 |  900.9% |
+| wiki     | Disabled    | Enabled         |    33.2116 |  4.4361 |  748.7% |
+| gcc      | Disabled    | Disabled        |    19.3008 |  3.9440 |  489.4% |
+| gcc      | Enabled     | Disabled        |    19.2106 |  3.9751 |  483.3% |
+| gcc      | Disabled    | Enabled         |    39.0410 | 11.0931 |  351.9% |
+
+Som det kan ses i tabel [[Tabel 10]], så er der opnået en hastighedsforbedring på mellem 3.5 til 9 gange
+set ift. den gamle implementering. Dette giver en gennemsnitlig forbedring på ca. 6.5 gange
+uanset options.
+
+** Navne-reglen
+
+Ud fra resultaterne af benchmarks, så er den nye implementering hurtigere end den gamle.
+De beregnede hastighedsfaktorer kan ses i tabel [[Tabel 11]]. Den viser en gennemsnitlig forbedring
+på ca. 6.5 til 16 gange alt efter datasæt uden 'expansive'-optionen. Da den gamle implemention
+forårsagede en TIMEOUT i benchmarken for 'expansive'-optionen med begge datasæt, samt at den nye
+udgave ikke har denne option, så kan man ikke komme med noget tal for hastighedsforbedring her.
+Man kunne dog argumentere for, at siden den nye udgave også finder 'enkelte navne', og dermed i
+princippet har samme funktionalitet som standard, så er der en forbedring i og med, at den nye
+implementering gennemfører benchmarken inden for en praktisk anvendelig tid. \\
+
+#+CAPTION: Beregnede hastighedsfaktorer fra 'Mean Time' for Navne-reglen.
+#+NAME: Tabel 11
+| data set | /expansive/ | Gammel (s) | Ny (s) | Speedup |
+|----------+-----------+------------+--------+---------|
+| wiki     | Disabled  | 111.1803   | 6.8151 | 1631.4% |
+| wiki     | Enabled   | TIMEOUT    | N/A    | N/A     |
+| gcc      | Disabled  | 34.5217    | 5.4869 | 629.2%  |
+| gcc      | Enabled   | TIMEOUT    | N/A    | N/A     |
+
+Dette er opnået på trods af at den nye udgave har samme tidskompleksitet på $\mathcal{O}(n + m)$ som
+standardalgoritmen for den gamle Navne-reglen. Dermed tyder dette på, at det er forskellen i
+implementeringssprog, der spiller en rolle.
+
+** Adresse-reglen
+
+Adresse-reglen er den regel, som har vist sig at have den største forbedring bl.a. alle de betragtede
+regler. Som det kan ses i tabel [[Tabel 12]], så leverer den nye udgave en hastighedsforbedring på
+ca. 29 gange uanset datasæt. Dog skal det nævnes, at denne forskel bl.a. kan skyldes, at definitionen
+for en 'adresse' kun kræver et vejnavn og et husnummer. Den gamle udgave finder også eventuelt
+etagenummer, postnummer og bynavn, hvilket ikke er tilfældet med den nye udgave. \\
+
+#+CAPTION: Beregnede hastighedsfaktorer fra 'Mean Time' for Adresse-reglen.
+#+NAME: Tabel 12
+| data set | Gammel (s) | Ny (s) | Speedup |
+|----------+------------+--------+---------|
+| wiki     |    57.0632 | 1.9814 | 2925.4% |
+| gcc      |    68.3224 | 2.3113 | 2956.0% |
+
+På den anden side kan man argumentere for, at siden den gamle version kun krævede et vejnavn som minimum,
+at den essentielle funktionalitet er bevaret, og den anden informantion er overflødig. 
+
+** Ordliste-reglen
+
+For ordliste-reglen blev der lavet to nye implementeringer, der takler hver sin case.
+Benchmarks for den gamle ordliste-regel resulterede i 'TIMEOUT', så på den måde er det
+ikke muligt at komme med konkrete tal for hastighedsforøgelser, men alligevel kan man konkludere
+at de nye udgaver viser en forbedring, da de trods alt gennemfører benchmarken inden for en praktisk
+anvendelig mængde tid.
+
+** Resultaterne og Projektet generelt
+
+Som set i forrige afsnit, så er der opnået betragtelige hastighedsforbedringer på alle de udvalgte
+regler, hvilket er ønskeligt. Der er naturligvis flere spørgsmål om områder med potentielle performance forbedringer,
+som ikke er blevet berørt, herunder: Hvad med parallelisering? Kan man anvende en ASIC, såsom en GPU el.lign.,
+til ydermere at accelerere algoritmerne og i så fald hvordan? Der er også spørgsmål om korrektheden af algoritmerne,
+hvor der her er valgt at anvende unit-testing, men hvor formelle metoder såsom program verifikation[fn:1] og
+model tjek[fn:2] kunne have været med til at give en højere grad af tillid til det nye system? \\
+
+Resultaterne fra forrige afsnit er ikke alene opnået ud fra teknisk indsigt, men kan opfattes
+som evidens for, at den nye forskning-baserede udviklingsproces har vist sig at være givtig og
+produktiv for projektetforløbet som helhed. I hvert fald kan man sige, at der ikke er noget, som
+umiddelbart taler imod denne udviklingsproces, da der heller ikke er nogen evidens for modvirkning af
+fremgang i projektet. Det er dog gruppens opfattelse, at denne nye metode har haft en positiv indvirkning. \\
+
+Der er dog stadigvæk nogle udfordringer, som ikke er blevet behandlet. Dette er eksempelvis
+integration med det eksisterende system, hvilket indebærer opsætning af systemer, såsom en CI/CD
+pipeline til pakning og distribution af det nye regelsystem. Dog er dette ikke en del af de mål,
+der er sat i projektets afgrænsning, men det er alligevel en nødvendighed for, at systemet kommer
+i produktion og bliver afprøvet i den virkelige verden. \\
+
+* Footnotes
+[fn:2] Model checking - Wikipedia: https://en.wikipedia.org/wiki/Model_checking 
+
+[fn:1] Formal Verification - Wikipedia: https://en.wikipedia.org/wiki/Formal_verification 

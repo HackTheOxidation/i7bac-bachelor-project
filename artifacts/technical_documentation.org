@@ -1,0 +1,25 @@
+#+TITLE: I7BAC - Bachelorprojekt: Teknisk Dokumentation
+#+SUBTITLE: Optimizing Text Processing for OS2datascanner based on Finite Automata.
+#+AUTHOR: Gruppe 3: Tomas Hagenau Andersen - Studienr.: 201906721 \and Vejleder: Carsten Eie Frigaard
+#+DATE: Aarhus Universitet - Afleveringsdato: 2023-05-31
+#+OPTIONS: toc:nil ^:nil
+#+LATEX_HEADER: \usepackage{amssymb, amsthm, amsmath}
+#+LATEX_HEADER: \usepackage{url}
+#+LATEX_HEADER: \newtheorem{theorem}{Theorem}
+
+\newpage
+
+* Foreword
+
+This document is a compilation of all the technical documentation for the bachelors project:
+"Optimizing Text Processing for OS2datascanner based on Finite Automata". As requested by
+the company in collaboration, Magenta ApS, and the OS2datascanner team, all of the technical
+documentation is written in English for purposes of internationalization.
+
+\newpage
+
+#+INCLUDE: "./algorithm_analysis.org"
+#+INCLUDE: "./algorithm_documentation.org"
+#+INCLUDE: "./benchmarking.org"
+#+INCLUDE: "./cpr_regular_language_proof.org"
+

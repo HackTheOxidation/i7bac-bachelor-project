@@ -1,0 +1,26 @@
+#+TITLE: Referat for Vejledermøde 5 d. 2023-02-28
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-02-27
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 28. Februar 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Dette møde drejede sig om benchmarks af en ny implementering af CPR-reglen i C++ med bindinger
+til Python gennem CPython's C-API. Benchmarksne viste en 5-gange hastighedforbedring ift. den gamle
+implementering. Vejleder paapegede dog, at der var usikkerheder i benchmarksne eftersom at datamaengderne
+ikke var store nok til at give lange nok koerselstider. Ved for lidt data vil cachen have stor betydning.
+Derfor blev det besluttet at gentage benchmarks med mere data for at kunne udlukke cachens virkning.
+
+Den teoretisk-datalogiske modellering og analyse af de algoritmer, som ligger bag de nuvaerende implementationer af
+systemreglerne i OS2datascanner skrider stille og roligt frem. 

@@ -1,0 +1,27 @@
+#+TITLE: Referat for Vejledermøde 2 d. 2023-02-07
+#+AUTHOR: Tomas Hagenau Andersen
+#+DATE: 2023-02-10
+#+OPTIONS: toc:nil num:nil
+
+* Dato, tid og sted
+
+- Dato: d. 7. Februar 2023
+- Tid: kl. 9:15
+- Sted: Carstens kontor
+
+* Deltagere
+
+- Gruppemedlemmer: Tomas (referent)
+- Vejleder: Carsten
+
+* Resume
+
+Dette møde drejede sig hovedsagligt om de udkast til indledning og problemformulering der
+var lavet indtilvidere. Det viste sig, at projektets overordenede struktur skulle laves om
+til at have en større indledende analyse, hvilket indledningen og problemformuleringen
+ekplicit skal uddybe og kommunikere klart til læseren.
+
+Dette medførte, at indledningen skulle forklarer mere om, hvad OS2datascanner er for at
+sætte scenen for selve problemet. Derudover skulle problemformuleringen ændres fra
+udelukkende at indholde spørgsmål til også at guide læseren igennem projektets tiltænkte
+forløb.

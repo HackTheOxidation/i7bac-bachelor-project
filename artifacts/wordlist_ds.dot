@@ -1,0 +1,12 @@
+digraph wordlist_data_structures {
+    node [shape=record];
+    rankdir=LR;
+    hashmap [label="Hash Table | { word | index } | { \"Hello\" | <ht0> [0] } | { \"This\" | <ht1> [1, 17] } | .&#92;n.&#92;n. | { \"Text\" | <ht2> [9] }"];
+    wordlists [label="Wordlists | { <wl0> \"World\" } | { <wl1> \"is\" | \"a\" | \"list\" | \"of\" | \"words\" } | .&#92;n.&#92;n. | { <wl2> \"me\" | \"later\" } | .&#92;n.&#92;n. | { <wl3> \"was\" | \"a\" | \"mistake\" }"];
+
+    hashmap:ht0 -> wordlists:wl0;
+    hashmap:ht1 -> wordlists:wl1;
+    hashmap:ht2 -> wordlists:wl2;
+    hashmap:ht1 -> wordlists:wl3;
+    
+}
